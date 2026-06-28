@@ -1,26 +1,96 @@
 @import "tailwindcss";
 
+@theme {
+  /* Fonts */
+  --font-display: var(--font-sora);
+  --font-sans: var(--font-inter);
+
+  /* Surfaces (dark navy) */
+  --color-canvas: #090d18;
+  --color-surface: #0f1626;
+  --color-surface-2: #16203a;
+  --color-elevated: #1b2742;
+  --color-border: #1f2a44;
+  --color-border-soft: #2a3858;
+
+  /* Brand */
+  --color-primary: #2563eb;
+  --color-primary-600: #1d4ed8;
+  --color-primary-700: #1e40af;
+  --color-primary-soft: #aac2ff;
+
+  --color-success: #16a34a;
+  --color-success-bright: #22c55e;
+  --color-teal: #14b8a6;
+  --color-danger: #ef4444;
+  --color-gold: #f5b417;
+
+  /* Text on white cards */
+  --color-ink: #0b1220;
+  --color-ink-soft: #46566f;
+
+  /* Text on dark */
+  --color-fg: #e9eef9;
+  --color-fg-muted: #8a96ad;
+  --color-fg-faint: #5d6880;
+
+  /* Radii */
+  --radius-card: 1.25rem;
+  --radius-xl2: 1.5rem;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #05070e;
+  color: var(--color-fg);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Centered mobile app frame */
+.app-shell {
+  position: relative;
+  margin-inline: auto;
+  width: 100%;
+  max-width: 440px;
+  min-height: 100dvh;
+  background: var(--color-canvas);
+  overflow-x: hidden;
+}
+
+@media (min-width: 480px) {
+  .app-shell {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.04),
+      0 30px 80px -20px rgba(0, 0, 0, 0.8);
+  }
+}
+
+@utility no-scrollbar {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Clearance so scrollable content is not hidden behind the fixed bottom nav */
+@utility pb-nav {
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom));
+}
+
+@layer utilities {
+  .tap {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
 }

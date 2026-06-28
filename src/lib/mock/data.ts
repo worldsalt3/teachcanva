@@ -1,0 +1,494 @@
+import type {
+  CurrentUser,
+  DaySlots,
+  LiveNowItem,
+  Review,
+  Session,
+  Teacher,
+  Topic,
+  WalletAccount,
+  SessionReward,
+} from "./types";
+
+export const currentStudent: CurrentUser = {
+  id: "u-adaeze",
+  name: "Adaeze Okafor",
+  firstName: "Adaeze",
+  role: "student",
+  tpBalance: 320,
+};
+
+export const currentTeacher: CurrentUser = {
+  id: "u-emeka",
+  name: "Emeka Nwosu",
+  firstName: "Emeka",
+  role: "teacher",
+  tpBalance: 1240,
+};
+
+export const topics: Topic[] = [
+  { id: "all", label: "All" },
+  { id: "further-maths", label: "Further Maths" },
+  { id: "physics", label: "Physics" },
+  { id: "chemistry", label: "Chemistry" },
+  { id: "economics", label: "Economics" },
+  { id: "coding", label: "Coding" },
+  { id: "english", label: "English" },
+  { id: "biology", label: "Biology" },
+];
+
+export const interests: string[] = [
+  "Further Maths",
+  "Physics",
+  "Chemistry",
+  "English",
+  "Economics",
+  "Biology",
+  "Government",
+  "Literature",
+];
+
+const defaultReviews: Review[] = [
+  {
+    id: "r1",
+    author: "Chidubem A.",
+    rating: 5,
+    date: "2 days ago",
+    text: "Explained calculus in a way that finally clicked. The live canvas made everything so clear.",
+  },
+  {
+    id: "r2",
+    author: "Fatima S.",
+    rating: 5,
+    date: "1 week ago",
+    text: "Patient, structured and incredibly knowledgeable. Booked my next three sessions already.",
+  },
+  {
+    id: "r3",
+    author: "Tobi O.",
+    rating: 4,
+    date: "2 weeks ago",
+    text: "Great session on mechanics. Would have loved a few more practice problems at the end.",
+  },
+];
+
+const buildAvailability = (): DaySlots[] => [
+  {
+    label: "MON",
+    day: 12,
+    available: true,
+    slots: [
+      { time: "09:00 AM", available: true },
+      { time: "11:00 AM", available: true },
+      { time: "02:00 PM", available: true },
+    ],
+  },
+  {
+    label: "TUE",
+    day: 13,
+    available: true,
+    slots: [
+      { time: "09:00 AM", available: true },
+      { time: "10:00 AM", available: false },
+      { time: "11:00 AM", available: true },
+      { time: "12:00 PM", available: true },
+      { time: "01:00 PM", available: true },
+      { time: "02:00 PM", available: true },
+      { time: "03:00 PM", available: false },
+      { time: "04:00 PM", available: true },
+    ],
+  },
+  {
+    label: "WED",
+    day: 14,
+    available: true,
+    slots: [
+      { time: "10:00 AM", available: true },
+      { time: "01:00 PM", available: true },
+      { time: "03:00 PM", available: true },
+    ],
+  },
+  {
+    label: "THU",
+    day: 15,
+    available: true,
+    slots: [
+      { time: "09:00 AM", available: true },
+      { time: "11:00 AM", available: true },
+      { time: "04:00 PM", available: true },
+    ],
+  },
+  {
+    label: "FRI",
+    day: 16,
+    available: false,
+    slots: [],
+  },
+];
+
+export const teachers: Teacher[] = [
+  {
+    id: "aisha-olamide",
+    name: "Aisha Olamide",
+    title: "Senior Mathematics & Physics Specialist",
+    subjects: ["Mathematics", "Physics", "Calculus"],
+    rating: 4.9,
+    reviewCount: 482,
+    sessionsCount: 1200,
+    hourlyRate: 12500,
+    sessionLengthMins: 60,
+    isLive: true,
+    isPro: true,
+    verified: true,
+    bio: "I am a passionate educator with over 8 years of experience in simplifying complex STEM concepts for secondary and tertiary students across Nigeria. My approach focuses on practical application and cognitive problem-solving strategies. I believe education is the key to unlocking the future potential of Africa's youth.",
+    education: [
+      {
+        degree: "M.Sc. Theoretical Physics",
+        school: "University of Lagos (Unilag)",
+      },
+    ],
+    expertise: ["Further Maths", "Electromagnetism", "Statistics", "Mechanics"],
+    tpBonusPerHour: 50,
+    availability: buildAvailability(),
+    reviews: defaultReviews,
+  },
+  {
+    id: "olumide-adebayo",
+    name: "Dr. Olumide Adebayo",
+    title: "Advanced Mathematics & Physics",
+    subjects: ["Mathematics", "Physics"],
+    rating: 4.9,
+    reviewCount: 318,
+    sessionsCount: 940,
+    hourlyRate: 8500,
+    sessionLengthMins: 45,
+    isLive: true,
+    isPro: true,
+    verified: true,
+    bio: "Senior mathematics tutor specialising in exam preparation and advanced calculus. I help students build intuition, not just memorise formulas, so concepts stick long after the session ends.",
+    education: [
+      { degree: "Ph.D. Applied Mathematics", school: "University of Ibadan" },
+    ],
+    expertise: ["Advanced Calculus", "Integration", "Kinematics", "Vectors"],
+    tpBonusPerHour: 50,
+    availability: buildAvailability(),
+    reviews: defaultReviews,
+  },
+  {
+    id: "chinelo-olumide",
+    name: "Chinelo Olumide",
+    title: "Mathematics & Physics Tutor",
+    subjects: ["Mathematics", "Physics"],
+    rating: 4.9,
+    reviewCount: 124,
+    sessionsCount: 410,
+    hourlyRate: 12500,
+    sessionLengthMins: 60,
+    isLive: true,
+    isPro: false,
+    verified: true,
+    bio: "I make maths and physics approachable for WAEC and JAMB candidates with clear, structured live lessons.",
+    education: [
+      { degree: "B.Sc. Mathematics", school: "University of Nigeria, Nsukka" },
+    ],
+    expertise: ["Algebra", "Trigonometry", "Waves", "Optics"],
+    tpBonusPerHour: 40,
+    availability: buildAvailability(),
+    reviews: defaultReviews,
+  },
+  {
+    id: "amina-bello",
+    name: "Amina Bello",
+    title: "Economics & Business Educator",
+    subjects: ["Economics", "Business"],
+    rating: 4.8,
+    reviewCount: 89,
+    sessionsCount: 260,
+    hourlyRate: 8000,
+    sessionLengthMins: 60,
+    isLive: false,
+    isPro: false,
+    verified: true,
+    nextSlotLabel: "THU 4PM",
+    bio: "Helping students master economics and business studies with real-world Nigerian case studies and exam-focused frameworks.",
+    education: [{ degree: "M.Sc. Economics", school: "Covenant University" }],
+    expertise: ["Microeconomics", "Macroeconomics", "Accounting", "Statistics"],
+    tpBonusPerHour: 35,
+    availability: buildAvailability(),
+    reviews: defaultReviews,
+  },
+  {
+    id: "tunde-kalu",
+    name: "Tunde Kalu",
+    title: "Software Engineer & Coding Mentor",
+    subjects: ["Coding", "Algorithms"],
+    rating: 5.0,
+    reviewCount: 210,
+    sessionsCount: 680,
+    hourlyRate: 15000,
+    sessionLengthMins: 60,
+    isLive: true,
+    isPro: true,
+    verified: true,
+    bio: "I teach practical programming and computer science fundamentals, from first lines of code to data structures and algorithms.",
+    education: [
+      {
+        degree: "B.Sc. Computer Science",
+        school: "Obafemi Awolowo University",
+      },
+    ],
+    expertise: ["Python", "Data Structures", "Algorithms", "Web Development"],
+    tpBonusPerHour: 50,
+    availability: buildAvailability(),
+    reviews: defaultReviews,
+  },
+  {
+    id: "ifeanyi-obi",
+    name: "Ifeanyi Obi",
+    title: "Business Analytics & Data Science",
+    subjects: ["Business Analytics", "Data Science"],
+    rating: 4.9,
+    reviewCount: 156,
+    sessionsCount: 520,
+    hourlyRate: 8500,
+    sessionLengthMins: 60,
+    isLive: false,
+    isPro: true,
+    verified: true,
+    bio: "Turning numbers into decisions. I teach data analytics, spreadsheets and the fundamentals of data science for students and professionals.",
+    education: [
+      { degree: "M.Sc. Data Science", school: "University of Lagos" },
+    ],
+    expertise: ["Excel", "SQL", "Statistics", "Visualisation"],
+    tpBonusPerHour: 40,
+    availability: buildAvailability(),
+    reviews: defaultReviews,
+  },
+  {
+    id: "kwesi-mensah",
+    name: "Kwesi Mensah",
+    title: "Software Engineering (Python)",
+    subjects: ["Software Engineering", "Python"],
+    rating: 4.8,
+    reviewCount: 98,
+    sessionsCount: 340,
+    hourlyRate: 12000,
+    sessionLengthMins: 60,
+    isLive: false,
+    isPro: false,
+    verified: true,
+    bio: "Senior software engineer teaching clean, practical Python and software engineering principles through live build-alongs.",
+    education: [{ degree: "B.Sc. Software Engineering", school: "KNUST" }],
+    expertise: ["Python", "APIs", "Testing", "Git"],
+    tpBonusPerHour: 45,
+    availability: buildAvailability(),
+    reviews: defaultReviews,
+  },
+];
+
+export const liveNow: LiveNowItem[] = [
+  {
+    id: "live-1",
+    teacherId: "chinelo-olumide",
+    teacherName: "Chidi Okoro",
+    topic: "Advanced Mathematics",
+    tag: "STEM",
+    viewers: 1200,
+  },
+  {
+    id: "live-2",
+    teacherId: "amina-bello",
+    teacherName: "Aisha Bello",
+    topic: "English Literature",
+    tag: "ARTS",
+    viewers: 856,
+  },
+  {
+    id: "live-3",
+    teacherId: "tunde-kalu",
+    teacherName: "Tunde Kalu",
+    topic: "Intro to Algorithms",
+    tag: "CODE",
+    viewers: 642,
+  },
+];
+
+// Student's upcoming sessions (home screen)
+export const studentUpcoming: Session[] = [
+  {
+    id: "s-econ-101",
+    counterpartName: "Prof. Amina",
+    subject: "Economics",
+    topic: "Economics 101",
+    dateLabel: "OCT 24",
+    timeLabel: "04:00 PM",
+    durationMins: 60,
+    status: "upcoming",
+  },
+  {
+    id: "s-fin-acc",
+    counterpartName: "Mr. Tunde",
+    subject: "Accounting",
+    topic: "Financial Accounting",
+    dateLabel: "OCT 25",
+    timeLabel: "10:30 AM",
+    durationMins: 60,
+    status: "upcoming",
+  },
+];
+
+export const recommendedTeacherIds = ["ifeanyi-obi", "kwesi-mensah"];
+
+// Teacher dashboard scheduled sessions
+export const teacherScheduled: Session[] = [
+  {
+    id: "ts-algebra",
+    counterpartName: "Chinelo Olumide",
+    subject: "Mathematics",
+    topic: "Algebra Fundamentals & Quadratic Equations",
+    dateLabel: "TODAY",
+    timeLabel: "14:30 - 15:30",
+    durationMins: 60,
+    status: "upcoming",
+    countdown: "in 2h 14m",
+  },
+  {
+    id: "ts-mechanics",
+    counterpartName: "Amina Yusuf",
+    subject: "Physics",
+    topic: "Newtonian Mechanics & Gravity",
+    dateLabel: "TODAY",
+    timeLabel: "17:00 - 18:00",
+    durationMins: 60,
+    status: "upcoming",
+    countdown: "in 5h 44m",
+  },
+];
+
+export const teacherPast: Session[] = [
+  {
+    id: "tp-chem",
+    counterpartName: "Adewale K.",
+    subject: "Chemistry",
+    topic: "Organic Chemistry Basics",
+    dateLabel: "YESTERDAY",
+    timeLabel: "11:00 - 12:00",
+    durationMins: 60,
+    status: "completed",
+    replay: true,
+    rating: 4.9,
+  },
+];
+
+// Student wallet
+export const studentWallet: WalletAccount = {
+  balance: 25400,
+  pendingPayouts: 0,
+  pendingClearsIn: "—",
+  lifetimeEarnings: 0,
+  tpBalance: 320,
+  referralCode: "TCH-ADAEZE-2024",
+  referralReward: 5000,
+  transactions: [
+    {
+      id: "wt-1",
+      title: "Mathematics: Advanced Calculus",
+      subtitle: "Aisha Olamide • Oct 12, 2023",
+      amount: 12500,
+      direction: "out",
+      status: "completed",
+    },
+    {
+      id: "wt-2",
+      title: "Wallet Top-up — Card",
+      subtitle: "Oct 10, 2023 • Ref: 77231904",
+      amount: 20000,
+      direction: "in",
+      status: "completed",
+    },
+  ],
+};
+
+// Teacher earnings wallet
+export const teacherWallet: WalletAccount = {
+  balance: 425000,
+  pendingPayouts: 32450,
+  pendingClearsIn: "48 hours",
+  lifetimeEarnings: 2145800,
+  tpBalance: 12450,
+  referralCode: "TCH-OLUMIDE-2024",
+  referralReward: 5000,
+  transactions: [
+    {
+      id: "et-1",
+      title: "Mathematics: Algebra Session",
+      subtitle: "Student: Chinelo Olumide • Oct 12, 2023",
+      amount: 12500,
+      direction: "in",
+      status: "completed",
+    },
+    {
+      id: "et-2",
+      title: "Physics: Quantum Mechanics",
+      subtitle: "Student: Aminu Bello • Oct 10, 2023",
+      amount: 15000,
+      direction: "in",
+      status: "completed",
+    },
+    {
+      id: "et-3",
+      title: "Chemistry: Organic Compounds",
+      subtitle: "Student: Zainab Adamu • Oct 08, 2023",
+      amount: 12500,
+      direction: "in",
+      status: "pending",
+    },
+    {
+      id: "et-4",
+      title: "Bank Withdrawal — Access Bank",
+      subtitle: "Oct 05, 2023 • Ref: 98452312",
+      amount: 50000,
+      direction: "out",
+      status: "sent",
+    },
+  ],
+};
+
+// Session-complete rewards (screen 5)
+export const sessionRewards: SessionReward[] = [
+  { label: "Base Teaching Points", tp: 150 },
+  { label: "Quality Bonus (5★)", tp: 50 },
+  { label: "7-Day Streak Bonus", tp: 25 },
+];
+
+// A representative completed session for the Session Complete screen
+export const completedSession = {
+  id: "done-1",
+  subject: "Mathematics",
+  topic: "Advanced Calculus & Integration",
+  dateLabel: "October 24, 2023 • 2:00 PM",
+  durationMins: 60,
+  teacherId: "aisha-olamide",
+  teacherName: "Aisha Olamide",
+  teacherTitle: "Premium Senior Tutor",
+  payout: 12500,
+  totalTp: 225,
+  nextAvailability: "Tomorrow, 10:00 AM",
+};
+
+// A representative live session (screens 2 & 3)
+export const liveSession = {
+  id: "live-advanced-calculus",
+  topic: "Advanced Calculus",
+  teacherId: "olumide-adebayo",
+  teacherName: "Olumide Adebayo",
+  teacherTitle: "Senior Mathematics Tutor",
+  studentName: "Chinelo O.",
+  subject: "Advanced Calculus",
+  viewers: 14,
+  elapsed: "00:32:16",
+  tpMultiplier: 2,
+  tpEarnedToast: 50,
+  slideTitle: "Topic: Advanced Calculus",
+  slideBody: "∫(3x² + 2x) dx = x³ + x² + C",
+};
