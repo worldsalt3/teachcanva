@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CalendarPlus, CalendarX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BottomSheet } from "@/components/ui/sheet";
 import { ScheduledSessionCard } from "@/components/session/teacher-session-card";
 import { teacherScheduled } from "@/lib/mock";
 import { cn } from "@/lib/utils";
@@ -16,8 +17,20 @@ const DAYS = [
   { key: "sat", label: "Sat", sub: "Oct 17" },
 ];
 
+const WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
 export default function TeacherSchedulePage() {
   const [day, setDay] = useState("today");
+  const [availOpen, setAvailOpen] = useState(false);
+  const [avail, setAvail] = useState<Record<string, boolean>>({
+    Mon: true,
+    Tue: true,
+    Wed: true,
+    Thu: true,
+    Fri: false,
+    Sat: true,
+    Sun: false,
+  });
   const sessions = day === "today" ? teacherScheduled : [];
 
   return (
@@ -29,6 +42,7 @@ export default function TeacherSchedulePage() {
           </h1>
           <button
             type="button"
+            onClick={() => setAvailOpen(true)}
             className="tap inline-flex items-center gap-1.5 rounded-full border border-border-soft px-3 py-1.5 text-[13px] font-semibold text-fg-muted"
           >
             <CalendarPlus className="size-4" />
@@ -85,13 +99,64 @@ export default function TeacherSchedulePage() {
             <p className="mt-1 max-w-60 text-[13px] text-fg-muted">
               Open up availability so students can book this day.
             </p>
-            <Button variant="outline" size="sm" className="mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={() => setAvailOpen(true)}
+            >
               <CalendarPlus className="size-4" />
               Add availability
             </Button>
           </div>
         )}
       </div>
+
+      <BottomSheet
+        open={availOpen}
+        onClose={() => setAvailOpen(false)}
+        title="Weekly availability"
+      >
+        <p className="mb-3 text-[13px] text-fg-muted">
+          Toggle the days you&apos;re open for sessions.
+        </p>
+        <div className="divide-y divide-border overflow-hidden rounded-card border border-border bg-surface">
+          {WEEK.map((d) => (
+            <div
+              key={d}
+              className="flex items-center justify-between px-4 py-3"
+            >
+              <span className="font-medium text-fg">{d}</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={avail[d]}
+                aria-label={d}
+                onClick={() => setAvail((a) => ({ ...a, [d]: !a[d] }))}
+                className={cn(
+                  "tap relative h-6 w-11 shrink-0 rounded-full transition-colors",
+                  avail[d] ? "bg-primary" : "bg-surface-2",
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute top-0.5 size-5 rounded-full bg-white transition-all",
+                    avail[d] ? "left-5.5" : "left-0.5",
+                  )}
+                />
+              </button>
+            </div>
+          ))}
+        </div>
+        <Button
+          fullWidth
+          size="lg"
+          className="mt-5"
+          onClick={() => setAvailOpen(false)}
+        >
+          Save availability
+        </Button>
+      </BottomSheet>
     </div>
   );
 }

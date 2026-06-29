@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -16,6 +17,8 @@ import { PasswordInput } from "@/components/ui/password-input";
 
 export default function TeacherApplyPage() {
   const router = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [photo, setPhoto] = useState<string | null>(null);
 
   return (
     <main className="min-h-dvh pb-10">
@@ -47,16 +50,41 @@ export default function TeacherApplyPage() {
         className="mx-4 mt-4 rounded-3xl bg-white p-6 text-ink shadow-xl"
       >
         <div className="flex flex-col items-center">
-          <button type="button" className="relative">
-            <span className="grid size-24 place-items-center rounded-full bg-surface text-white/80">
-              <Camera className="size-8" />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="relative"
+          >
+            <span className="grid size-24 place-items-center overflow-hidden rounded-full bg-surface text-white/80">
+              {photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photo}
+                  alt="Profile preview"
+                  className="size-full object-cover"
+                />
+              ) : (
+                <Camera className="size-8" />
+              )}
             </span>
             <span className="absolute bottom-1 right-1 grid size-7 place-items-center rounded-full bg-primary text-white ring-4 ring-white">
               <Pencil className="size-3.5" />
             </span>
           </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) setPhoto(URL.createObjectURL(file));
+            }}
+          />
           <span className="mt-3 text-sm text-ink-soft">
-            Upload professional photo
+            {photo
+              ? "Photo added — tap to change"
+              : "Upload professional photo"}
           </span>
         </div>
 

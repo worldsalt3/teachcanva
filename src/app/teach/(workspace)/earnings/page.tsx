@@ -29,6 +29,11 @@ export default function TeacherEarningsPage() {
     setTimeout(() => setToast(null), 2600);
   };
 
+  const notify = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2600);
+  };
+
   return (
     <div className="flex-1">
       <header className="sticky top-0 z-30 bg-canvas/85 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl">
@@ -56,6 +61,7 @@ export default function TeacherEarningsPage() {
             </button>
             <button
               type="button"
+              onClick={() => notify("Statement is on its way to your email")}
               className="tap h-11 flex-1 rounded-xl bg-white/15 text-sm font-semibold text-white backdrop-blur-sm transition-transform active:scale-[0.98]"
             >
               Statement
@@ -122,6 +128,7 @@ export default function TeacherEarningsPage() {
           </div>
           <button
             type="button"
+            onClick={() => notify("Verify your identity to change payout bank")}
             className="tap text-[13px] font-semibold text-primary-soft"
           >
             Change

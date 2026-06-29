@@ -1,4 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Session } from "@/lib/mock";
@@ -38,10 +42,27 @@ export function UpcomingSessionCard({
           <Button size="sm">Join</Button>
         </Link>
       ) : (
-        <Button size="sm" variant="neutral">
-          Remind
-        </Button>
+        <RemindButton />
       )}
     </div>
+  );
+}
+
+function RemindButton() {
+  const [on, setOn] = useState(false);
+  return (
+    <Button
+      size="sm"
+      variant={on ? "success" : "neutral"}
+      onClick={() => setOn(true)}
+    >
+      {on ? (
+        <>
+          <Check className="size-4" /> Set
+        </>
+      ) : (
+        "Remind"
+      )}
+    </Button>
   );
 }

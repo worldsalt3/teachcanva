@@ -25,6 +25,27 @@ const TABS = ["About", "Reviews", "Availability"];
 export function TeacherProfile({ teacher }: { teacher: Teacher }) {
   const router = useRouter();
   const [tab, setTab] = useState("About");
+  const [saved, setSaved] = useState(false);
+  const [shareToast, setShareToast] = useState(false);
+
+  const handleShare = async () => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({
+          title: teacher.name,
+          text: `Learn with ${teacher.name} on TeachCanvas`,
+          url,
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setShareToast(true);
+      setTimeout(() => setShareToast(false), 1800);
+    } catch {
+      /* share cancelled or unavailable */
+    }
+  };
 
   return (
     <div className="flex min-h-dvh flex-col pb-28">
@@ -35,11 +56,16 @@ export function TeacherProfile({ teacher }: { teacher: Teacher }) {
             <ChevronLeft className="size-6" />
           </CoverButton>
           <div className="flex gap-2">
-            <CoverButton label="Share">
+            <CoverButton label="Share" onClick={handleShare}>
               <Share2 className="size-5" />
             </CoverButton>
-            <CoverButton label="Save tutor">
-              <Heart className="size-5" />
+            <CoverButton
+              label={saved ? "Saved" : "Save tutor"}
+              onClick={() => setSaved((v) => !v)}
+            >
+              <Heart
+                className={cn("size-5", saved && "fill-danger text-danger")}
+              />
             </CoverButton>
           </div>
         </div>
@@ -106,6 +132,14 @@ export function TeacherProfile({ teacher }: { teacher: Teacher }) {
         {tab === "Reviews" && <ReviewsTab teacher={teacher} />}
         {tab === "Availability" && <AvailabilityTab teacher={teacher} />}
       </div>
+
+      {shareToast && (
+        <div className="fixed inset-x-0 bottom-28 z-50 mx-auto flex max-w-110 justify-center px-5">
+          <span className="rounded-full bg-ink/90 px-4 py-2 text-[13px] font-semibold text-white shadow-xl backdrop-blur-sm">
+            Profile link copied
+          </span>
+        </div>
+      )}
 
       <BookingBar teacher={teacher} />
     </div>

@@ -35,9 +35,11 @@ export function ScheduledSessionCard({ session }: { session: Session }) {
         </div>
       </div>
       <div className="mt-3 flex gap-2.5">
-        <Button variant="neutral" size="sm" className="flex-1">
-          Reschedule
-        </Button>
+        <Link href="/teach/schedule" className="flex-1">
+          <Button variant="neutral" size="sm" fullWidth>
+            Reschedule
+          </Button>
+        </Link>
         <Link href={TEACH_LIVE_HREF} className="flex-1">
           <Button size="sm" fullWidth>
             Start session
@@ -64,12 +66,12 @@ export function PastSessionCard({ session }: { session: Session }) {
           <StarValue value={session.rating} className="text-[12px]" />
         )}
         {session.replay && (
-          <button
-            type="button"
+          <Link
+            href={`/session/${session.id}/complete`}
             className="tap text-[12px] font-semibold text-primary-soft"
           >
             Replay
-          </button>
+          </Link>
         )}
       </div>
     </div>

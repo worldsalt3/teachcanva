@@ -49,6 +49,11 @@ export default function WalletPage() {
     }
   };
 
+  const notify = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2600);
+  };
+
   return (
     <div className="flex-1">
       <header className="sticky top-0 z-30 bg-canvas/85 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl">
@@ -76,6 +81,7 @@ export default function WalletPage() {
             </button>
             <button
               type="button"
+              onClick={() => notify("Statement is on its way to your email")}
               className="tap h-11 flex-1 rounded-xl bg-white/15 text-sm font-semibold text-white backdrop-blur-sm transition-transform active:scale-[0.98]"
             >
               Statement
@@ -95,6 +101,13 @@ export default function WalletPage() {
           </div>
           <button
             type="button"
+            onClick={() =>
+              notify(
+                wallet.tpBalance >= 500
+                  ? "Redeem unlocked — choose a reward"
+                  : `Earn ${500 - wallet.tpBalance} more TP to redeem`,
+              )
+            }
             className="tap text-[13px] font-semibold text-gold"
           >
             Redeem
