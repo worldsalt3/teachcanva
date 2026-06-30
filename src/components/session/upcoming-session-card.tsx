@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, Play } from "lucide-react";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { StarValue } from "@/components/ui/rating";
 import { cn } from "@/lib/utils";
 import type { Session } from "@/lib/mock";
 
@@ -64,5 +66,28 @@ function RemindButton() {
         "Remind"
       )}
     </Button>
+  );
+}
+
+/** Past session row with an available recording, for the student Home screen. */
+export function RecentSessionCard({ session }: { session: Session }) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3">
+      <Avatar name={session.counterpartName} size="md" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold text-fg">{session.topic}</p>
+        <p className="truncate text-[13px] text-fg-muted">
+          {session.counterpartName} · {session.dateLabel}
+        </p>
+        {session.rating !== undefined && (
+          <StarValue value={session.rating} className="mt-1 text-[12px]" />
+        )}
+      </div>
+      <Link href={`/session/${session.id}/recording`} className="shrink-0">
+        <Button size="sm" variant="neutral">
+          <Play className="size-4" /> Recording
+        </Button>
+      </Link>
+    </div>
   );
 }

@@ -339,6 +339,34 @@ export const studentUpcoming: Session[] = [
 
 export const recommendedTeacherIds = ["ifeanyi-obi", "kwesi-mensah"];
 
+// Student past sessions with available recordings
+export const studentPast: Session[] = [
+  {
+    id: "sp-calc",
+    counterpartName: "Aisha Olamide",
+    subject: "Mathematics",
+    topic: "Advanced Calculus & Integration",
+    dateLabel: "OCT 18",
+    timeLabel: "02:00 PM",
+    durationMins: 60,
+    status: "completed",
+    replay: true,
+    rating: 5,
+  },
+  {
+    id: "sp-cell",
+    counterpartName: "Dr. Nneka Eze",
+    subject: "Biology",
+    topic: "Cell Structure & Function",
+    dateLabel: "OCT 15",
+    timeLabel: "11:00 AM",
+    durationMins: 45,
+    status: "completed",
+    replay: true,
+    rating: 4.8,
+  },
+];
+
 // Teacher dashboard scheduled sessions
 export const teacherScheduled: Session[] = [
   {

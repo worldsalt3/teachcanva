@@ -6,9 +6,12 @@ import { Avatar } from "@/components/ui/avatar";
 import { SearchTrigger } from "@/components/ui/search-bar";
 import { SectionHeader } from "@/components/ui/section-header";
 import { LiveNowCard } from "@/components/session/live-now-card";
-import { UpcomingSessionCard } from "@/components/session/upcoming-session-card";
+import {
+  RecentSessionCard,
+  UpcomingSessionCard,
+} from "@/components/session/upcoming-session-card";
 import { TeacherRow } from "@/components/teacher/teacher-card";
-import { getLiveNow, getRecommendedTeachers } from "@/lib/mock";
+import { getLiveNow, getRecommendedTeachers, studentPast } from "@/lib/mock";
 import { useApp } from "@/lib/store/app-provider";
 
 export default function StudentHomePage() {
@@ -89,6 +92,19 @@ export default function StudentHomePage() {
               </Link>
             </div>
           )}
+        </section>
+
+        <section>
+          <SectionHeader
+            title="Recent Sessions"
+            actionLabel="History"
+            actionHref="/profile"
+          />
+          <div className="space-y-2.5">
+            {studentPast.map((session) => (
+              <RecentSessionCard key={session.id} session={session} />
+            ))}
+          </div>
         </section>
 
         <section>

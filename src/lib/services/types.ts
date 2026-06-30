@@ -20,6 +20,13 @@ export interface ChatMessage {
   time: string; // "14:32"
 }
 
+/** A presentation slide a teacher prepares for a class. */
+export interface Slide {
+  id: string;
+  title: string;
+  body: string;
+}
+
 /** Everything needed to create a booking from the booking flow. */
 export interface BookingDraft {
   teacherId: string;

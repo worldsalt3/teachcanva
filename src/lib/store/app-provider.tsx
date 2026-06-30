@@ -27,6 +27,7 @@ import type {
   AppNotification,
   BookingDraft,
   ChatMessage,
+  Slide,
 } from "@/lib/services/types";
 
 const STORAGE_KEY = "teachcanvas:v1";
@@ -78,6 +79,7 @@ interface PersistShape {
   studentBookings: Session[];
   notifications: AppNotification[];
   chat: Record<string, ChatMessage[]>;
+  slides: Record<string, Slide[]>;
 }
 
 function initialState(): PersistShape {
@@ -91,6 +93,7 @@ function initialState(): PersistShape {
     studentBookings: structuredClone(studentUpcoming),
     notifications: structuredClone(seedNotifications),
     chat: {},
+    slides: {},
   };
 }
 
@@ -111,6 +114,8 @@ interface AppContextValue extends PersistShape {
   markAllNotificationsRead: () => void;
   // chat
   sendChatMessage: (sessionId: string, text: string) => void;
+  // class preparation
+  saveSlides: (sessionId: string, slides: Slide[]) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -316,6 +321,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const saveSlides = useCallback((sessionId: string, slides: Slide[]) => {
+    setState((s) => ({
+      ...s,
+      slides: { ...s.slides, [sessionId]: slides },
+    }));
+  }, []);
+
   const value = useMemo<AppContextValue>(() => {
     const unreadCount = state.notifications.filter((n) => !n.read).length;
     return {
@@ -332,6 +344,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       markNotificationRead,
       markAllNotificationsRead,
       sendChatMessage,
+      saveSlides,
     };
   }, [
     state,
@@ -345,6 +358,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     markNotificationRead,
     markAllNotificationsRead,
     sendChatMessage,
+    saveSlides,
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

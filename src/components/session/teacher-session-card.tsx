@@ -1,15 +1,20 @@
+"use client";
+
 import Link from "next/link";
-import { Clock } from "lucide-react";
+import { Clock, Presentation } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { StarValue } from "@/components/ui/rating";
+import { useApp } from "@/lib/store/app-provider";
 import type { Session } from "@/lib/mock";
 
 const TEACH_LIVE_HREF = "/live/live-advanced-calculus?as=teacher";
 
 /** Upcoming session card for the teacher dashboard and schedule. */
 export function ScheduledSessionCard({ session }: { session: Session }) {
+  const { slides } = useApp();
   const start = session.timeLabel.split("-")[0].trim();
+  const slideCount = slides[session.id]?.length ?? 0;
   return (
     <div className="rounded-card border border-border bg-surface p-3.5">
       <div className="flex items-center gap-3.5">
@@ -34,17 +39,33 @@ export function ScheduledSessionCard({ session }: { session: Session }) {
           )}
         </div>
       </div>
-      <div className="mt-3 flex gap-2.5">
-        <Link href="/teach/schedule" className="flex-1">
-          <Button variant="neutral" size="sm" fullWidth>
-            Reschedule
+      <div className="mt-3 space-y-2.5">
+        <Link href={`/teach/prepare/${session.id}`} className="block">
+          <Button variant="outline" size="sm" fullWidth>
+            <Presentation className="size-4" />
+            Prepare class
+            {slideCount > 0 && (
+              <span className="rounded-full bg-primary/20 px-1.5 text-[11px] font-bold text-primary-soft">
+                {slideCount}
+              </span>
+            )}
           </Button>
         </Link>
-        <Link href={TEACH_LIVE_HREF} className="flex-1">
-          <Button size="sm" fullWidth>
-            Start session
-          </Button>
-        </Link>
+        <div className="flex gap-2.5">
+          <Link href="/teach/schedule" className="flex-1">
+            <Button variant="neutral" size="sm" fullWidth>
+              Reschedule
+            </Button>
+          </Link>
+          <Link
+            href={`${TEACH_LIVE_HREF}&prep=${session.id}`}
+            className="flex-1"
+          >
+            <Button size="sm" fullWidth>
+              Start session
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   );

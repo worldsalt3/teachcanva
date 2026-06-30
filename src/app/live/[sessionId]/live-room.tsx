@@ -1,10 +1,11 @@
 "use client";
 
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
+  ChevronRight,
   Eye,
   Hand,
   MessageSquare,
@@ -57,8 +58,23 @@ export function LiveRoom({ session }: { session: LiveSession }) {
     role === "teacher" ? session.studentName : session.teacherName;
   const room = useVideoRoom({ roomId: session.id, identity, counterpartName });
   const connected = room.state === "connected";
-  const { chat, sendChatMessage } = useApp();
+  const { chat, sendChatMessage, slides } = useApp();
   const messages = chat[session.id] ?? [];
+
+  // Slides the teacher prepared for this class (passed via ?prep=<sessionId>).
+  const prepId = params.get("prep");
+  const prepared = useMemo(
+    () => (prepId ? (slides[prepId] ?? []) : []),
+    [prepId, slides],
+  );
+  const [slideIndex, setSlideIndex] = useState(0);
+  const teacherSlide = useMemo(
+    () =>
+      prepared.length
+        ? prepared[Math.min(slideIndex, prepared.length - 1)]
+        : { title: session.slideTitle, body: session.slideBody },
+    [prepared, slideIndex, session.slideTitle, session.slideBody],
+  );
 
   const [chatOpen, setChatOpen] = useState(false);
   const [draft, setDraft] = useState("");
@@ -217,26 +233,51 @@ export function LiveRoom({ session }: { session: LiveSession }) {
       )}
 
       <LiveCanvasBoard
-        slide={
-          role === "teacher"
-            ? { title: session.slideTitle, body: session.slideBody }
-            : undefined
-        }
+        slide={role === "teacher" ? teacherSlide : undefined}
         defaultMode="slide"
         className="flex-1"
         overlay={
           role === "teacher" ? (
-            <div className="absolute bottom-3 right-3 w-28">
-              <MediaThumb
-                seed={session.studentName}
-                className="h-20 rounded-xl ring-2 ring-white/25"
-                icon={false}
-              >
-                <span className="absolute inset-x-0 bottom-0 truncate bg-black/40 px-2 py-1 text-[11px] font-medium text-white">
-                  {session.studentName}
-                </span>
-              </MediaThumb>
-            </div>
+            <>
+              {prepared.length > 0 && (
+                <div className="absolute bottom-3 left-3 flex items-center gap-0.5 rounded-full border border-black/10 bg-white/90 p-1 shadow-sm backdrop-blur-sm">
+                  <button
+                    type="button"
+                    aria-label="Previous slide"
+                    disabled={slideIndex === 0}
+                    onClick={() => setSlideIndex((i) => Math.max(0, i - 1))}
+                    className="tap grid size-8 place-items-center rounded-full text-ink disabled:opacity-30"
+                  >
+                    <ChevronLeft className="size-5" />
+                  </button>
+                  <span className="min-w-10 text-center text-[12px] font-bold tabular-nums text-ink">
+                    {slideIndex + 1}/{prepared.length}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Next slide"
+                    disabled={slideIndex === prepared.length - 1}
+                    onClick={() =>
+                      setSlideIndex((i) => Math.min(prepared.length - 1, i + 1))
+                    }
+                    className="tap grid size-8 place-items-center rounded-full text-ink disabled:opacity-30"
+                  >
+                    <ChevronRight className="size-5" />
+                  </button>
+                </div>
+              )}
+              <div className="absolute bottom-3 right-3 w-28">
+                <MediaThumb
+                  seed={session.studentName}
+                  className="h-20 rounded-xl ring-2 ring-white/25"
+                  icon={false}
+                >
+                  <span className="absolute inset-x-0 bottom-0 truncate bg-black/40 px-2 py-1 text-[11px] font-medium text-white">
+                    {session.studentName}
+                  </span>
+                </MediaThumb>
+              </div>
+            </>
           ) : null
         }
       />
