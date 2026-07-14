@@ -28,10 +28,16 @@ export async function signUpWithEmail(
   const supabase = createClient();
   if (!supabase) return { ok: true };
 
+  const next = params.role === "teacher" ? "/teach/dashboard" : "/home";
   const { data, error } = await supabase.auth.signUp({
     email: params.email,
     password: params.password,
-    options: { data: { name: params.name, role: params.role } },
+    options: {
+      data: { name: params.name, role: params.role },
+      // Land the email-confirmation link back in the app so the callback
+      // exchanges the code and signs the user straight in.
+      emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+    },
   });
   if (error) return { ok: false, error: error.message };
   return { ok: true, needsConfirmation: !data.session };
