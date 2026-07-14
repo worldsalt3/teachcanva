@@ -1,5 +1,5 @@
 // TeachCanvas service worker — lightweight app-shell + runtime caching.
-const VERSION = "tc-v1";
+const VERSION = "tc-v2";
 const APP_SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 
