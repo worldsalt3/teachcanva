@@ -15,6 +15,8 @@ interface SignUpParams {
   email: string;
   password: string;
   role: Role;
+  /** Professional's stated occupation (teacher signups only). */
+  profession?: string;
 }
 
 /**
@@ -33,7 +35,11 @@ export async function signUpWithEmail(
     email: params.email,
     password: params.password,
     options: {
-      data: { name: params.name, role: params.role },
+      data: {
+        name: params.name,
+        role: params.role,
+        ...(params.profession ? { profession: params.profession } : {}),
+      },
       // Land the email-confirmation link back in the app so the callback
       // exchanges the code and signs the user straight in.
       emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,

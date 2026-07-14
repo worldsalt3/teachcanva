@@ -44,6 +44,7 @@ export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [profession, setProfession] = useState("");
   const [selected, setSelected] = useState<string[]>(["Further Maths"]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -65,6 +66,8 @@ export default function SignupPage() {
       email,
       password,
       role,
+      profession:
+        role === "teacher" && profession.trim() ? profession.trim() : undefined,
     });
     setBusy(false);
     if (!res.ok) {
@@ -183,25 +186,35 @@ export default function SignupPage() {
             />
           </Field>
 
-          <div>
-            <p className="mb-3 text-sm font-semibold text-ink">
-              {role === "teacher"
-                ? "What will you teach?"
-                : "What are you interested in learning?"}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {interests.map((topic) => (
-                <Chip
-                  key={topic}
-                  tone="light"
-                  selected={selected.includes(topic)}
-                  onClick={() => toggle(topic)}
-                >
-                  {topic}
-                </Chip>
-              ))}
+          {role === "teacher" ? (
+            <Field label="What is your profession?" htmlFor="profession" tone="light">
+              <Input
+                id="profession"
+                tone="light"
+                placeholder="e.g. Product Designer, Chartered Accountant"
+                value={profession}
+                onChange={(e) => setProfession(e.target.value)}
+              />
+            </Field>
+          ) : (
+            <div>
+              <p className="mb-3 text-sm font-semibold text-ink">
+                What are you interested in learning?
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {interests.map((topic) => (
+                  <Chip
+                    key={topic}
+                    tone="light"
+                    selected={selected.includes(topic)}
+                    onClick={() => toggle(topic)}
+                  >
+                    {topic}
+                  </Chip>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {error && (
