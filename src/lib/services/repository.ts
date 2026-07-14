@@ -483,6 +483,7 @@ export async function submitTeacherApplication(app: {
 // ─── cohorts ─────────────────────────────────────────────────────────────────
 interface CohortRow {
   id: string;
+  owner_id: string | null;
   professional_name: string;
   title: string;
   topic: string;
@@ -520,7 +521,7 @@ export async function fetchCohortSessions(): Promise<CohortSession[]> {
 
   return (rows as CohortRow[]).map((r) => ({
     id: r.id,
-    professionalId: "",
+    professionalId: r.owner_id ?? "",
     professionalName: r.professional_name || "Professional",
     title: r.title,
     topic: r.topic,
@@ -539,28 +540,49 @@ export async function fetchCohortSessions(): Promise<CohortSession[]> {
   }));
 }
 
-/** Persists a cohort the current professional scheduled (owner = user). */
-export async function insertCohortSession(c: CohortSession): Promise<void> {
+/**
+ * Persists a cohort the current professional scheduled (owner = user).
+ * Returns the DB-generated id so local state can reconcile.
+ */
+export async function insertCohortSession(
+  c: CohortSession,
+): Promise<string | null> {
   const supabase = createClient();
-  if (!supabase) return;
+  if (!supabase) return null;
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) return null;
 
-  await supabase.from("cohort_sessions").insert({
-    owner_id: user.id,
-    professional_name: c.professionalName,
-    title: c.title,
-    topic: c.topic,
-    tag: c.tag,
-    date_label: c.dateLabel,
-    time_label: c.timeLabel,
-    duration_mins: c.durationMins,
-    seat_limit: c.seatLimit,
-    price_per_seat: c.pricePerSeat,
-    status: c.status,
-  });
+  const { data, error } = await supabase
+    .from("cohort_sessions")
+    .insert({
+      owner_id: user.id,
+      professional_name: c.professionalName,
+      title: c.title,
+      topic: c.topic,
+      tag: c.tag,
+      date_label: c.dateLabel,
+      time_label: c.timeLabel,
+      duration_mins: c.durationMins,
+      seat_limit: c.seatLimit,
+      price_per_seat: c.pricePerSeat,
+      status: c.status,
+    })
+    .select("id")
+    .single();
+  if (error || !data) return null;
+  return (data as { id: string }).id;
+}
+
+/** Updates a cohort's status (RLS restricts writes to the owner). */
+export async function setCohortStatus(
+  cohortId: string,
+  status: CohortSession["status"],
+): Promise<void> {
+  const supabase = createClient();
+  if (!supabase || !UUID_RE.test(cohortId)) return;
+  await supabase.from("cohort_sessions").update({ status }).eq("id", cohortId);
 }
 
 /** The current member's enrolments, keyed by cohort id. */

@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Check, Sparkles, Wallet } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
 import { StarRating } from "@/components/ui/star-rating";
+import { AuthGate } from "@/components/layout/auth-gate";
+import { useApp } from "@/lib/store/app-provider";
+import { isSupabaseEnabled } from "@/lib/services/config";
 import { completedSession, sessionRewards } from "@/lib/mock";
 import { formatNaira, formatTP } from "@/lib/utils";
 
@@ -20,12 +24,57 @@ const CONFETTI_COLORS = [
 ];
 
 export default function SessionCompletePage() {
-  const session = completedSession;
+  const { id } = useParams<{ id: string }>();
+  const { cohorts, studentBookings } = useApp();
+
+  // Summarise the real session that just ended; the mock seed only backs the
+  // stub preview when no backend is configured.
+  const session = useMemo(() => {
+    const cohort = cohorts.find((c) => c.id === id);
+    if (cohort) {
+      return {
+        subject: cohort.topic,
+        topic: cohort.title,
+        dateLabel: `${cohort.dateLabel} • ${cohort.timeLabel}`,
+        teacherId: cohort.professionalId,
+        teacherName: cohort.professionalName,
+        teacherTitle: cohort.topic,
+        payout: cohort.pricePerSeat * cohort.seatsTaken,
+        totalTp: sessionRewards.reduce((sum, r) => sum + r.tp, 0),
+      };
+    }
+    const booking = studentBookings.find((b) => b.id === id);
+    if (booking) {
+      return {
+        subject: booking.subject,
+        topic: booking.topic,
+        dateLabel: `${booking.dateLabel} • ${booking.timeLabel}`,
+        teacherId: "",
+        teacherName: booking.counterpartName,
+        teacherTitle: booking.subject,
+        payout: booking.amount ?? 0,
+        totalTp: sessionRewards.reduce((sum, r) => sum + r.tp, 0),
+      };
+    }
+    if (!isSupabaseEnabled) return completedSession;
+    return {
+      subject: "Live session",
+      topic: "Session complete",
+      dateLabel: "",
+      teacherId: "",
+      teacherName: "Professional",
+      teacherTitle: "Live professional",
+      payout: 0,
+      totalTp: sessionRewards.reduce((sum, r) => sum + r.tp, 0),
+    };
+  }, [cohorts, studentBookings, id]);
+
   const [rating, setRating] = useState(5);
   const [feedback, setFeedback] = useState("");
 
   return (
     <div className="relative min-h-dvh overflow-hidden">
+      <AuthGate />
       <Confetti />
 
       <div className="relative z-10 px-5 pb-12 pt-[max(2rem,env(safe-area-inset-top))]">
@@ -110,11 +159,13 @@ export default function SessionCompletePage() {
         </div>
 
         <div className="mt-7 space-y-2.5">
-          <Link href={`/book/${session.teacherId}`}>
-            <Button fullWidth size="lg">
-              Book Next Session
-            </Button>
-          </Link>
+          {session.teacherId ? (
+            <Link href={`/book/${session.teacherId}`}>
+              <Button fullWidth size="lg">
+                Book Next Session
+              </Button>
+            </Link>
+          ) : null}
           <Link href="/home">
             <Button fullWidth size="lg" variant="neutral">
               Back to Home

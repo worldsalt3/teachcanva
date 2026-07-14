@@ -7,8 +7,12 @@ import { BottomSheet } from "@/components/ui/sheet";
 import { Field, Input } from "@/components/ui/input";
 import { Chip } from "@/components/ui/chip";
 import { ProgressBar } from "@/components/ui/progress";
-import { ScheduledSessionCard } from "@/components/session/teacher-session-card";
+import {
+  cohortToSession,
+  ScheduledSessionCard,
+} from "@/components/session/teacher-session-card";
 import { teacherScheduled, currentTeacher } from "@/lib/mock";
+import { isSupabaseEnabled } from "@/lib/services/config";
 import { useApp } from "@/lib/store/app-provider";
 import { cn, formatNaira } from "@/lib/utils";
 
@@ -41,12 +45,15 @@ export default function TeacherSchedulePage() {
     Sat: true,
     Sun: false,
   });
-  const sessions = day === "today" ? teacherScheduled : [];
-
-  const { cohorts, createCohortSession } = useApp();
+  const { cohorts, createCohortSession, userId } = useApp();
   const myCohorts = cohorts.filter(
-    (c) => c.professionalId === currentTeacher.id,
+    (c) => c.professionalId === (userId ?? currentTeacher.id),
   );
+  const sessions = isSupabaseEnabled
+    ? myCohorts.filter((c) => c.status === "scheduled").map(cohortToSession)
+    : day === "today"
+      ? teacherScheduled
+      : [];
   const [cohortOpen, setCohortOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState(COHORT_TOPICS[0]);

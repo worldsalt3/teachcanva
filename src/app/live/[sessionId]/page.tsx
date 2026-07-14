@@ -1,11 +1,17 @@
 import { Suspense } from "react";
-import { liveSession } from "@/lib/mock";
+import { AuthGate } from "@/components/layout/auth-gate";
 import { LiveRoom } from "./live-room";
 
-export default function LivePage() {
+export default async function LivePage({
+  params,
+}: {
+  params: Promise<{ sessionId: string }>;
+}) {
+  const { sessionId } = await params;
   return (
     <Suspense fallback={<div className="h-dvh bg-canvas" />}>
-      <LiveRoom session={liveSession} />
+      <AuthGate />
+      <LiveRoom sessionId={sessionId} />
     </Suspense>
   );
 }

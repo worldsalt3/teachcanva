@@ -11,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { AppHeader, BackButton } from "@/components/layout/app-header";
+import { AuthGate } from "@/components/layout/auth-gate";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex min-h-dvh flex-col">
+      <AuthGate />
       <AppHeader bordered>
         <div className="flex items-center gap-2">
           <BackButton className="-ml-2" />

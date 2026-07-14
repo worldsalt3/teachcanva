@@ -5,6 +5,7 @@ import { FastForward, Pause, Play, Presentation, Rewind } from "lucide-react";
 import { AppHeader, BackButton } from "@/components/layout/app-header";
 import { MediaThumb } from "@/components/ui/media";
 import { useApp } from "@/lib/store/app-provider";
+import { isSupabaseEnabled } from "@/lib/services/config";
 import {
   studentPast,
   studentUpcoming,
@@ -26,12 +27,18 @@ function fmt(sec: number): string {
 export function RecordingPlayer({ sessionId }: { sessionId: string }) {
   const { studentBookings, slides } = useApp();
 
+  // Real deployments only look at the member's own bookings; the seed
+  // sessions exist purely for the stub preview.
   const session: Session | undefined = [
     ...studentBookings,
-    ...studentPast,
-    ...studentUpcoming,
-    ...teacherScheduled,
-    ...teacherPast,
+    ...(isSupabaseEnabled
+      ? []
+      : [
+          ...studentPast,
+          ...studentUpcoming,
+          ...teacherScheduled,
+          ...teacherPast,
+        ]),
   ].find((s) => s.id === sessionId);
 
   const chapters = slides[sessionId] ?? [];

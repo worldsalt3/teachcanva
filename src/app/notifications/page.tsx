@@ -11,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { AppHeader, BackButton } from "@/components/layout/app-header";
+import { AuthGate } from "@/components/layout/auth-gate";
 import { useApp } from "@/lib/store/app-provider";
 import type { AppNotification } from "@/lib/services/types";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="flex min-h-dvh flex-col">
+      <AuthGate />
       <AppHeader bordered>
         <div className="flex w-full items-center gap-2">
           <BackButton className="-ml-2" />

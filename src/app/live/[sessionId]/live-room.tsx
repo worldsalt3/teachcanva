@@ -28,9 +28,8 @@ import { useVideoRoom } from "@/lib/services/use-video-room";
 import { isSupabaseEnabled } from "@/lib/services/config";
 import { fetchChat, subscribeChat } from "@/lib/services/repository";
 import { cn } from "@/lib/utils";
-import type { liveSession } from "@/lib/mock";
-
-type LiveSession = typeof liveSession;
+import { liveSession as previewSession } from "@/lib/mock";
+import type { LiveSessionInfo } from "@/lib/services/types";
 
 function useTimer(start: string) {
   const toSeconds = (t: string) => {
@@ -48,26 +47,91 @@ function useTimer(start: string) {
   )}:${pad(sec % 60)}`;
 }
 
-export function LiveRoom({ session }: { session: LiveSession }) {
+export function LiveRoom({ sessionId }: { sessionId: string }) {
   const params = useSearchParams();
   const role = params.get("as") === "teacher" ? "teacher" : "student";
-  const endHref = `/session/${session.id}/complete`;
-  const timer = useTimer(session.elapsed);
-
-  const identity =
-    role === "teacher" ? session.teacherName : session.studentName;
-  const counterpartName =
-    role === "teacher" ? session.studentName : session.teacherName;
-  const room = useVideoRoom({ roomId: session.id, identity, counterpartName });
-  const { attachRemoteVideo } = room;
-  const connected = room.state === "connected";
   const {
     chat,
+    cohorts,
+    studentBookings,
+    profileName,
     sendChatMessage,
     receiveChatMessage,
     replaceChatThread,
     slides,
   } = useApp();
+
+  // Build the session context from real store data: cohort → booking →
+  // preview seed (stub mode only) → generic fallback.
+  const session = useMemo<LiveSessionInfo>(() => {
+    const viewerName = profileName ?? "Member";
+    const cohort = cohorts.find((c) => c.id === sessionId);
+    if (cohort) {
+      return {
+        id: sessionId,
+        topic: cohort.title,
+        subject: cohort.topic,
+        teacherId: cohort.professionalId,
+        teacherName: cohort.professionalName,
+        teacherTitle: cohort.topic,
+        studentName: viewerName,
+        viewers: Math.max(1, cohort.seatsTaken),
+        elapsed: "00:00:00",
+        tpMultiplier: 2,
+        tpEarnedToast: 50,
+        slideTitle: `Topic: ${cohort.title}`,
+        slideBody: cohort.topic,
+      };
+    }
+    const booking = studentBookings.find((b) => b.id === sessionId);
+    if (booking) {
+      return {
+        id: sessionId,
+        topic: booking.topic,
+        subject: booking.subject,
+        teacherId: "",
+        teacherName: booking.counterpartName,
+        teacherTitle: booking.subject,
+        studentName: viewerName,
+        viewers: 1,
+        elapsed: "00:00:00",
+        tpMultiplier: 2,
+        tpEarnedToast: 50,
+        slideTitle: `Topic: ${booking.topic}`,
+        slideBody: booking.subject,
+      };
+    }
+    if (!isSupabaseEnabled) {
+      return { ...previewSession, id: sessionId };
+    }
+    return {
+      id: sessionId,
+      topic: "Live session",
+      subject: "Live session",
+      teacherId: "",
+      teacherName: role === "teacher" ? viewerName : "Professional",
+      teacherTitle: "Live professional",
+      studentName: viewerName,
+      viewers: 1,
+      elapsed: "00:00:00",
+      tpMultiplier: 2,
+      tpEarnedToast: 50,
+      slideTitle: "Live canvas",
+      slideBody: "The professional will share content here.",
+    };
+  }, [cohorts, studentBookings, profileName, sessionId, role]);
+
+  const endHref = `/session/${session.id}/complete`;
+  const timer = useTimer(session.elapsed);
+
+  const identity =
+    profileName ??
+    (role === "teacher" ? session.teacherName : session.studentName);
+  const counterpartName =
+    role === "teacher" ? session.studentName : session.teacherName;
+  const room = useVideoRoom({ roomId: session.id, identity, counterpartName });
+  const { attachRemoteVideo } = room;
+  const connected = room.state === "connected";
   const messages = chat[session.id] ?? [];
 
   // Realtime chat sync: load backend history once, then stream new messages.

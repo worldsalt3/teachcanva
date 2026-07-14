@@ -17,6 +17,7 @@ import {
 import { Avatar } from "@/components/ui/avatar";
 import { ProgressBar } from "@/components/ui/progress";
 import { currentTeacher } from "@/lib/mock";
+import { isSupabaseEnabled } from "@/lib/services/config";
 import { useApp } from "@/lib/store/app-provider";
 import { formatCompact, formatTP, tpLevel } from "@/lib/utils";
 
@@ -94,8 +95,10 @@ const menu: { heading: string; items: MenuItem[] }[] = [
 ];
 
 export default function TeacherProfilePage() {
-  const { teacherWallet, signOut } = useApp();
+  const { teacherWallet, signOut, profileName } = useApp();
   const level = tpLevel(teacherWallet.tpBalance);
+  const displayName =
+    profileName ?? (isSupabaseEnabled ? "Professional" : currentTeacher.name);
 
   return (
     <div className="flex-1">
@@ -107,11 +110,11 @@ export default function TeacherProfilePage() {
 
       <div className="space-y-6 px-5 pt-2">
         <div className="flex items-center gap-4 rounded-card border border-border bg-surface p-4">
-          <Avatar name={currentTeacher.name} size="xl" ring />
+          <Avatar name={displayName} size="xl" ring />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <p className="truncate font-display text-xl font-bold text-fg">
-                {currentTeacher.name}
+                {displayName}
               </p>
               <BadgeCheck className="size-5 shrink-0 fill-primary text-white" />
             </div>
@@ -155,7 +158,7 @@ export default function TeacherProfilePage() {
           />
           <Stat
             label="Points"
-            value={formatTP(currentTeacher.tpBalance)}
+            value={formatTP(teacherWallet.tpBalance)}
             divided
           />
           <Stat

@@ -55,6 +55,23 @@ export interface CohortDraft {
 /** Outcome of a cohort enrolment attempt. */
 export type EnrolResult = "enrolled" | "waitlisted" | "insufficient";
 
+/** Everything the live classroom screen needs about the running session. */
+export interface LiveSessionInfo {
+  id: string;
+  topic: string;
+  subject: string;
+  teacherId: string;
+  teacherName: string;
+  teacherTitle: string;
+  studentName: string;
+  viewers: number;
+  elapsed: string; // "HH:MM:SS"
+  tpMultiplier: number;
+  tpEarnedToast: number;
+  slideTitle: string;
+  slideBody: string;
+}
+
 /** Credentials passed to the auth service on sign up / log in. */
 export interface AuthCredentials {
   name?: string;
