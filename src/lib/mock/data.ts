@@ -578,7 +578,7 @@ export const teacherWallet: WalletAccount = {
 
 // Session-complete rewards (screen 5)
 export const sessionRewards: SessionReward[] = [
-  { label: "Base Teaching Points", tp: 150 },
+  { label: "Base Learning Points", tp: 150 },
   { label: "Quality Bonus (5★)", tp: 50 },
   { label: "7-Day Streak Bonus", tp: 25 },
 ];

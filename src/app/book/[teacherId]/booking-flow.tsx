@@ -205,7 +205,7 @@ export function BookingFlow({ teacher }: { teacher: Teacher }) {
           <div className="mt-3 flex items-center gap-2 rounded-xl bg-gold/10 px-3 py-2.5">
             <Sparkles className="size-4 shrink-0 text-gold" />
             <p className="text-[13px] text-gold">
-              You&apos;ll earn {teacher.tpBonusPerHour} Teaching Points
+              You&apos;ll earn {teacher.tpBonusPerHour} Learning Points
             </p>
           </div>
         </div>

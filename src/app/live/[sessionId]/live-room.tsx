@@ -345,7 +345,7 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
                 : "-translate-y-2 opacity-0",
             )}
           >
-            <Sparkles className="size-4" />+{session.tpEarnedToast} TP
+            <Sparkles className="size-4" />+{session.tpEarnedToast} LP
           </div>
         </div>
       )}

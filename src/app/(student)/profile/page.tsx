@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { useApp } from "@/lib/store/app-provider";
-import { formatNaira, formatTP } from "@/lib/utils";
+import { formatNaira, formatLP } from "@/lib/utils";
 
 interface MenuItem {
   label: string;
@@ -58,7 +58,7 @@ const menu: { heading: string; items: MenuItem[] }[] = [
         tint: "bg-primary/15 text-primary-soft",
       },
       {
-        label: "Teaching Points",
+        label: "Learning Points",
         icon: Sparkles,
         href: "/wallet",
         tint: "bg-gold/15 text-gold",
@@ -122,7 +122,7 @@ export default function StudentProfilePage() {
         </div>
 
         <div className="grid grid-cols-3 overflow-hidden rounded-card border border-border bg-surface text-center">
-          <Stat label="Points" value={formatTP(studentWallet.tpBalance)} />
+          <Stat label="Points" value={formatLP(studentWallet.tpBalance)} />
           <Stat
             label="Upcoming"
             value={String(studentBookings.length)}

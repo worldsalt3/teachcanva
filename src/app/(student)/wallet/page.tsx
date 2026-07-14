@@ -8,7 +8,7 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { TransactionRow } from "@/components/wallet/transaction-row";
 import { useApp } from "@/lib/store/app-provider";
 import { processPayment } from "@/lib/services";
-import { cn, formatNaira, formatTP } from "@/lib/utils";
+import { cn, formatNaira, formatLP } from "@/lib/utils";
 
 const TOP_UP_AMOUNTS = [5000, 10000, 20000];
 
@@ -95,9 +95,9 @@ export default function WalletPage() {
             <Sparkles className="size-5" />
           </span>
           <div className="flex-1">
-            <p className="text-[13px] text-fg-muted">Teaching Points</p>
+            <p className="text-[13px] text-fg-muted">Learning Points</p>
             <p className="font-display text-xl font-bold text-fg">
-              {formatTP(wallet.tpBalance)}
+              {formatLP(wallet.tpBalance)}
             </p>
           </div>
           <button
@@ -106,7 +106,7 @@ export default function WalletPage() {
               notify(
                 wallet.tpBalance >= 500
                   ? "Redeem unlocked — choose a reward"
-                  : `Earn ${500 - wallet.tpBalance} more TP to redeem`,
+                  : `Earn ${500 - wallet.tpBalance} more LP to redeem`,
               )
             }
             className="tap text-[13px] font-semibold text-gold"
