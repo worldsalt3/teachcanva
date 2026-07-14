@@ -1,5 +1,5 @@
 import { TeacherBottomNav } from "@/components/layout/bottom-nav";
-import { DevRoleSwitch } from "@/components/layout/dev-role-switch";
+import { AuthGate } from "@/components/layout/auth-gate";
 
 export default function TeacherWorkspaceLayout({
   children,
@@ -8,8 +8,8 @@ export default function TeacherWorkspaceLayout({
 }) {
   return (
     <div className="flex min-h-dvh flex-col">
+      <AuthGate />
       <div className="flex flex-1 flex-col pb-nav">{children}</div>
-      <DevRoleSwitch />
       <TeacherBottomNav />
     </div>
   );

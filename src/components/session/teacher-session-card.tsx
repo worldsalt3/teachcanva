@@ -6,13 +6,25 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { StarValue } from "@/components/ui/rating";
 import { useApp } from "@/lib/store/app-provider";
-import type { Session } from "@/lib/mock";
+import type { CohortSession, Session } from "@/lib/mock";
 
-const TEACH_LIVE_HREF = "/live/live-advanced-calculus?as=teacher";
+/** Shapes a scheduled cohort as a Session for the professional's cards. */
+export function cohortToSession(c: CohortSession): Session {
+  return {
+    id: c.id,
+    counterpartName: `${c.seatsTaken}/${c.seatLimit} seats filled`,
+    subject: c.topic,
+    topic: c.title,
+    dateLabel: c.dateLabel,
+    timeLabel: c.timeLabel,
+    durationMins: c.durationMins,
+    status: "upcoming",
+  };
+}
 
 /** Upcoming session card for the teacher dashboard and schedule. */
 export function ScheduledSessionCard({ session }: { session: Session }) {
-  const { slides } = useApp();
+  const { slides, startCohort } = useApp();
   const start = session.timeLabel.split("-")[0].trim();
   const slideCount = slides[session.id]?.length ?? 0;
   return (
@@ -58,7 +70,8 @@ export function ScheduledSessionCard({ session }: { session: Session }) {
             </Button>
           </Link>
           <Link
-            href={`${TEACH_LIVE_HREF}&prep=${session.id}`}
+            href={`/live/${session.id}?as=teacher&prep=${session.id}`}
+            onClick={() => startCohort(session.id)}
             className="flex-1"
           >
             <Button size="sm" fullWidth>

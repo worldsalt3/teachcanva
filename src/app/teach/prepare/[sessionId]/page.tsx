@@ -1,4 +1,6 @@
 import { teacherScheduled } from "@/lib/mock";
+import { isSupabaseEnabled } from "@/lib/services/config";
+import { AuthGate } from "@/components/layout/auth-gate";
 import { PrepareClass } from "./prepare-class";
 
 export default async function PrepareClassPage({
@@ -7,12 +9,17 @@ export default async function PrepareClassPage({
   params: Promise<{ sessionId: string }>;
 }) {
   const { sessionId } = await params;
-  const session = teacherScheduled.find((s) => s.id === sessionId);
+  const session = isSupabaseEnabled
+    ? undefined
+    : teacherScheduled.find((s) => s.id === sessionId);
   return (
-    <PrepareClass
-      sessionId={sessionId}
-      topic={session?.topic ?? "Upcoming class"}
-      counterpartName={session?.counterpartName ?? "your student"}
-    />
+    <>
+      <AuthGate />
+      <PrepareClass
+        sessionId={sessionId}
+        topic={session?.topic ?? "Upcoming class"}
+        counterpartName={session?.counterpartName ?? "your class"}
+      />
+    </>
   );
 }

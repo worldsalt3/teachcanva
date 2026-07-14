@@ -11,7 +11,11 @@ import { GoogleIcon } from "@/components/icons/google";
 import { Logo } from "@/components/layout/logo";
 import { useApp } from "@/lib/store/app-provider";
 import { isSupabaseEnabled } from "@/lib/services/config";
-import { signInWithEmail, signInWithGoogle } from "@/lib/services/auth";
+import {
+  getSessionUser,
+  signInWithEmail,
+  signInWithGoogle,
+} from "@/lib/services/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,13 +29,16 @@ export default function LoginPage() {
     setError(null);
     setBusy(true);
     const res = await signInWithEmail(email, password);
-    setBusy(false);
     if (!res.ok) {
+      setBusy(false);
       setError(res.error ?? "Could not log in. Check your details.");
       return;
     }
     signIn();
-    router.push("/home");
+    // Land professionals in their workspace, learners on home.
+    const user = isSupabaseEnabled ? await getSessionUser() : null;
+    setBusy(false);
+    router.push(user?.role === "teacher" ? "/teach/dashboard" : "/home");
   };
 
   const google = async () => {

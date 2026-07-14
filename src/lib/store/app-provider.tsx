@@ -49,6 +49,7 @@ import {
   insertChatMessage,
   insertCohortSession,
   replaceSlides,
+  setCohortStatus,
   upsertCohortEnrolment,
 } from "@/lib/services/repository";
 import { UUID_RE } from "@/lib/services/teacher-mapper";
@@ -96,6 +97,7 @@ const seedNotifications: AppNotification[] = [
 
 interface PersistShape {
   authenticated: boolean;
+  userId: string | null;
   profileName: string | null;
   role: Role;
   teachers: Teacher[];
@@ -109,11 +111,44 @@ interface PersistShape {
   slides: Record<string, Slide[]>;
 }
 
-function initialState(): PersistShape {
+function emptyWallet(): WalletAccount {
   return {
-    // Seeded as authenticated so the app is instantly previewable; logging out
-    // clears this and gates the shells behind the landing/login flow.
+    balance: 0,
+    pendingPayouts: 0,
+    pendingClearsIn: "3–5 business days",
+    lifetimeEarnings: 0,
+    tpBalance: 0,
+    referralCode: "",
+    referralReward: 500,
+    transactions: [],
+  };
+}
+
+function initialState(): PersistShape {
+  if (isSupabaseEnabled) {
+    // Real backend: start blank and gated — everything hydrates from
+    // Supabase after sign-in. No seeded data.
+    return {
+      authenticated: false,
+      userId: null,
+      profileName: null,
+      role: "student",
+      teachers: [],
+      studentWallet: emptyWallet(),
+      teacherWallet: emptyWallet(),
+      studentBookings: [],
+      cohorts: [],
+      cohortEnrolments: {},
+      notifications: [],
+      chat: {},
+      slides: {},
+    };
+  }
+  return {
+    // Stub preview (no backend configured): seeded as authenticated so the
+    // app is instantly explorable; logging out gates behind the login flow.
     authenticated: true,
+    userId: null,
     profileName: null,
     role: "student",
     teachers: structuredClone(seedTeachers),
@@ -145,7 +180,8 @@ interface AppContextValue extends PersistShape {
   // cohorts
   enrolInCohort: (id: string) => EnrolResult;
   createCohortSession: (draft: CohortDraft) => CohortSession;
-  notifyGoLive: (topic: string) => void;
+  startCohort: (id: string) => void;
+  notifyGoLive: (topic: string, sessionId?: string) => void;
   // notifications
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
@@ -179,6 +215,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<PersistShape>(initialState);
   const [hydrated, setHydrated] = useState(false);
 
+  // Loads everything from the backend for the current session. Used on mount
+  // and again right after sign-in/sign-up so fresh sessions get their data.
+  const loadBackend = useCallback(async (): Promise<boolean> => {
+    const user = await getSessionUser();
+    if (!user) return false;
+    const [
+      bookings,
+      slides,
+      studentW,
+      teacherW,
+      teachers,
+      cohorts,
+      enrolments,
+    ] = await Promise.all([
+      fetchBookings(),
+      fetchOwnedSlides(),
+      fetchWallet("student"),
+      fetchWallet("teacher"),
+      fetchTeachers(),
+      fetchCohortSessions(),
+      fetchCohortEnrolments(),
+    ]);
+    setState((s) => ({
+      ...s,
+      authenticated: true,
+      userId: user.id,
+      profileName: user.name ?? s.profileName,
+      role: user.role,
+      studentBookings: bookings,
+      slides,
+      studentWallet: studentW ?? emptyWallet(),
+      teacherWallet: teacherW ?? emptyWallet(),
+      teachers,
+      cohorts,
+      cohortEnrolments: enrolments,
+    }));
+    return true;
+  }, []);
+
   // Load persisted state after mount to keep SSR output deterministic. With
   // Supabase configured we hydrate from the backend (auth gates the shells);
   // otherwise we fall back to the local-only persisted snapshot.
@@ -186,44 +261,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseEnabled) {
       let cancelled = false;
       void (async () => {
-        const user = await getSessionUser();
+        const ok = await loadBackend();
         if (cancelled) return;
-        if (!user) {
+        if (!ok) {
           // Backend on but no session → gate behind the login flow.
           setState((s) => ({ ...s, authenticated: false }));
-          setHydrated(true);
-          return;
         }
-        const [
-          bookings,
-          slides,
-          studentW,
-          teacherW,
-          teachers,
-          cohorts,
-          enrolments,
-        ] = await Promise.all([
-          fetchBookings(),
-          fetchOwnedSlides(),
-          fetchWallet("student"),
-          fetchWallet("teacher"),
-          fetchTeachers(),
-          fetchCohortSessions(),
-          fetchCohortEnrolments(),
-        ]);
-        if (cancelled) return;
-        setState((s) => ({
-          ...s,
-          authenticated: true,
-          profileName: user.name ?? s.profileName,
-          studentBookings: bookings.length ? bookings : s.studentBookings,
-          slides: Object.keys(slides).length ? slides : s.slides,
-          studentWallet: studentW ?? s.studentWallet,
-          teacherWallet: teacherW ?? s.teacherWallet,
-          teachers: teachers.length ? teachers : s.teachers,
-          cohorts: cohorts.length ? cohorts : s.cohorts,
-          cohortEnrolments: { ...s.cohortEnrolments, ...enrolments },
-        }));
         setHydrated(true);
       })();
       return () => {
@@ -243,7 +286,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       setHydrated(true);
     });
-  }, []);
+  }, [loadBackend]);
 
   // Persist on every change once hydrated. Skipped when Supabase is the source
   // of truth so we never serve a stale local snapshot over backend data.
@@ -258,7 +301,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(() => {
     setState((s) => ({ ...s, authenticated: true }));
-  }, []);
+    // Fresh session → pull the user's real data (profile, wallets, bookings).
+    if (isSupabaseEnabled) void loadBackend();
+  }, [loadBackend]);
 
   const signOut = useCallback(() => {
     if (isSupabaseEnabled) {
@@ -287,7 +332,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((s) => {
       const teacher =
         s.teachers.find((t) => t.id === draft.teacherId) ??
-        getTeacher(draft.teacherId);
+        (isSupabaseEnabled ? undefined : getTeacher(draft.teacherId));
       booking = {
         id: `bk-${Date.now()}`,
         counterpartName: teacher?.name ?? "Professional",
@@ -509,22 +554,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   /** Schedule a new cohort live session as the professional (FR-S04). */
   const createCohortSession = useCallback(
     (draft: CohortDraft): CohortSession => {
-      const cohort: CohortSession = {
-        id: `coh-${Date.now()}`,
-        professionalId: currentTeacher.id,
-        professionalName: currentTeacher.name,
-        title: draft.title.trim() || "Cohort live session",
-        topic: draft.topic,
-        tag: draft.topic.toUpperCase().slice(0, 8),
-        dateLabel: draft.dateLabel,
-        timeLabel: draft.timeLabel,
-        durationMins: draft.durationMins,
-        seatLimit: draft.seatLimit,
-        seatsTaken: 0,
-        pricePerSeat: draft.pricePerSeat,
-        status: "scheduled",
-      };
+      let cohort!: CohortSession;
       setState((s) => {
+        cohort = {
+          id: `coh-${Date.now()}`,
+          professionalId: s.userId ?? currentTeacher.id,
+          professionalName:
+            s.profileName ??
+            (isSupabaseEnabled ? "Professional" : currentTeacher.name),
+          title: draft.title.trim() || "Cohort live session",
+          topic: draft.topic,
+          tag: draft.topic.toUpperCase().slice(0, 8),
+          dateLabel: draft.dateLabel,
+          timeLabel: draft.timeLabel,
+          durationMins: draft.durationMins,
+          seatLimit: draft.seatLimit,
+          seatsTaken: 0,
+          pricePerSeat: draft.pricePerSeat,
+          status: "scheduled",
+        };
         const note: AppNotification = {
           id: `n-${Date.now()}`,
           title: "Cohort session scheduled",
@@ -541,24 +589,65 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
       });
       if (isSupabaseEnabled) {
-        void insertCohortSession(cohort);
+        const localId = cohort.id;
+        // Reconcile with the DB-generated id so go-live status updates and
+        // learner joins reference the same session.
+        void insertCohortSession(cohort).then((remoteId) => {
+          if (!remoteId) return;
+          setState((s) => ({
+            ...s,
+            cohorts: s.cohorts.map((c) =>
+              c.id === localId ? { ...c, id: remoteId } : c,
+            ),
+          }));
+        });
       }
       return cohort;
     },
     [],
   );
 
+  /**
+   * Start a scheduled cohort session: flips it live (locally + remotely) so
+   * it appears on learners' Live Now rail, and notifies followers (FR-N03).
+   */
+  const startCohort = useCallback((id: string) => {
+    setState((s) => {
+      const cohort = s.cohorts.find((c) => c.id === id);
+      if (!cohort || cohort.status === "live") return s;
+      const note: AppNotification = {
+        id: `n-${Date.now()}`,
+        title: `${cohort.professionalName} is live now`,
+        body: `${cohort.title} just started — join the live canvas.`,
+        time: "Just now",
+        kind: "session",
+        read: false,
+        href: `/live/${id}?as=student`,
+      };
+      return {
+        ...s,
+        cohorts: s.cohorts.map((c) =>
+          c.id === id ? { ...c, status: "live" as const } : c,
+        ),
+        notifications: [note, ...s.notifications],
+      };
+    });
+    if (isSupabaseEnabled) {
+      void setCohortStatus(id, "live");
+    }
+  }, []);
+
   /** 'Go Live' alert pushed to followers when a professional starts (FR-N03). */
-  const notifyGoLive = useCallback((topic: string) => {
+  const notifyGoLive = useCallback((topic: string, sessionId?: string) => {
     setState((s) => {
       const note: AppNotification = {
         id: `n-${Date.now()}`,
-        title: `${currentTeacher.name} is live now`,
+        title: `${s.profileName ?? "Your professional"} is live now`,
         body: `${topic} just started — join the live canvas.`,
         time: "Just now",
         kind: "session",
         read: false,
-        href: "/live/live-advanced-calculus?as=student",
+        href: `/live/${sessionId ?? "live-advanced-calculus"}?as=student`,
       };
       return { ...s, notifications: [note, ...s.notifications] };
     });
@@ -659,7 +748,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const sendChatMessage = useCallback((sessionId: string, text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
+    let author = "You";
     setState((s) => {
+      author =
+        s.profileName ?? (isSupabaseEnabled ? "Member" : currentStudent.name);
       const thread = s.chat[sessionId] ?? [];
       const message: ChatMessage = {
         id: `m-${Date.now()}`,
@@ -671,7 +763,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { ...s, chat: { ...s.chat, [sessionId]: [...thread, message] } };
     });
     if (isSupabaseEnabled) {
-      void insertChatMessage(sessionId, currentStudent.name, trimmed);
+      void insertChatMessage(sessionId, author, trimmed);
     }
   }, []);
 
@@ -718,7 +810,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return {
       ...state,
       hydrated,
-      studentName: state.profileName ?? currentStudent.name,
+      studentName:
+        state.profileName ??
+        (isSupabaseEnabled ? "Member" : currentStudent.name),
       unreadCount,
       signIn,
       signOut,
@@ -730,6 +824,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       withdrawWallet,
       enrolInCohort,
       createCohortSession,
+      startCohort,
       notifyGoLive,
       markNotificationRead,
       markAllNotificationsRead,
@@ -751,6 +846,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     withdrawWallet,
     enrolInCohort,
     createCohortSession,
+    startCohort,
     notifyGoLive,
     markNotificationRead,
     markAllNotificationsRead,

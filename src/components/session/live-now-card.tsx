@@ -5,12 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { formatCompact } from "@/lib/utils";
 import type { LiveNowItem } from "@/lib/mock";
 
-const LIVE_HREF = "/live/live-advanced-calculus?as=student";
-
 /** Live session card for the Home "Live Now" carousel. */
 export function LiveNowCard({ item }: { item: LiveNowItem }) {
   return (
-    <Link href={LIVE_HREF} className="tap block w-62 shrink-0">
+    <Link
+      href={`/live/${item.id}?as=student`}
+      className="tap block w-62 shrink-0"
+    >
       <MediaThumb seed={item.id} className="h-36 rounded-2xl">
         <Badge variant="live" dot uppercase className="absolute left-3 top-3">
           Live

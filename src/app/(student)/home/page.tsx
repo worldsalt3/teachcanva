@@ -12,14 +12,37 @@ import {
 } from "@/components/session/upcoming-session-card";
 import { TeacherRow } from "@/components/teacher/teacher-card";
 import { getLiveNow, recommendedTeacherIds, studentPast } from "@/lib/mock";
+import type { LiveNowItem } from "@/lib/mock";
+import { isSupabaseEnabled } from "@/lib/services/config";
 import { useApp } from "@/lib/store/app-provider";
 
 export default function StudentHomePage() {
-  const { studentName, studentBookings, unreadCount, teachers } = useApp();
+  const { studentName, studentBookings, unreadCount, teachers, cohorts } =
+    useApp();
   const firstName = studentName.split(" ")[0];
-  const live = getLiveNow();
+
+  // Live Now comes from cohorts that are actually live; the seed rail only
+  // backs the stub preview.
+  const liveCohorts: LiveNowItem[] = cohorts
+    .filter((c) => c.status === "live")
+    .map((c) => ({
+      id: c.id,
+      teacherId: c.professionalId,
+      teacherName: c.professionalName,
+      topic: c.title,
+      tag: c.tag,
+      viewers: Math.max(1, c.seatsTaken),
+    }));
+  const live =
+    liveCohorts.length || isSupabaseEnabled ? liveCohorts : getLiveNow();
+
+  const upcoming = studentBookings.filter((s) => s.status === "upcoming");
+  const recent = isSupabaseEnabled
+    ? studentBookings.filter((s) => s.status === "completed")
+    : studentPast;
+
   const featured = teachers.filter((t) => recommendedTeacherIds.includes(t.id));
-  const recommended = featured.length ? featured : teachers.slice(0, 3);
+  const recommended = featured.length ? featured : teachers.slice(0, 5);
 
   return (
     <div className="flex-1">
@@ -57,11 +80,25 @@ export default function StudentHomePage() {
             actionLabel="See all"
             actionHref="/explore"
           />
-          <div className="no-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-1">
-            {live.map((item) => (
-              <LiveNowCard key={item.id} item={item} />
-            ))}
-          </div>
+          {live.length > 0 ? (
+            <div className="no-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-1">
+              {live.map((item) => (
+                <LiveNowCard key={item.id} item={item} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-card border border-dashed border-border-soft px-4 py-8 text-center">
+              <p className="text-[13px] text-fg-muted">
+                No one is live right now.
+              </p>
+              <Link
+                href="/explore"
+                className="mt-1 inline-block text-[13px] font-semibold text-primary-soft"
+              >
+                Browse upcoming sessions
+              </Link>
+            </div>
+          )}
         </section>
 
         <section>
@@ -70,9 +107,9 @@ export default function StudentHomePage() {
             actionLabel="Manage"
             actionHref="/profile"
           />
-          {studentBookings.length > 0 ? (
+          {upcoming.length > 0 ? (
             <div className="space-y-2.5">
-              {studentBookings.map((session, i) => (
+              {upcoming.map((session, i) => (
                 <UpcomingSessionCard
                   key={session.id}
                   session={session}
@@ -95,31 +132,35 @@ export default function StudentHomePage() {
           )}
         </section>
 
-        <section>
-          <SectionHeader
-            title="Recent Sessions"
-            actionLabel="History"
-            actionHref="/profile"
-          />
-          <div className="space-y-2.5">
-            {studentPast.map((session) => (
-              <RecentSessionCard key={session.id} session={session} />
-            ))}
-          </div>
-        </section>
+        {recent.length > 0 && (
+          <section>
+            <SectionHeader
+              title="Recent Sessions"
+              actionLabel="History"
+              actionHref="/profile"
+            />
+            <div className="space-y-2.5">
+              {recent.map((session) => (
+                <RecentSessionCard key={session.id} session={session} />
+              ))}
+            </div>
+          </section>
+        )}
 
-        <section>
-          <SectionHeader
-            title="Recommended For You"
-            actionLabel="See all"
-            actionHref="/explore"
-          />
-          <div className="space-y-2.5">
-            {recommended.map((teacher) => (
-              <TeacherRow key={teacher.id} teacher={teacher} />
-            ))}
-          </div>
-        </section>
+        {recommended.length > 0 && (
+          <section>
+            <SectionHeader
+              title="Recommended For You"
+              actionLabel="See all"
+              actionHref="/explore"
+            />
+            <div className="space-y-2.5">
+              {recommended.map((teacher) => (
+                <TeacherRow key={teacher.id} teacher={teacher} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
 
       <div className="pointer-events-none fixed inset-x-0 bottom-23 z-30 flex justify-center">
