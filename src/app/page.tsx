@@ -10,18 +10,18 @@ export default function LandingPage() {
           TeachCanvas
         </h1>
         <p className="mt-2 text-[15px] text-fg-muted">
-          Learn live. Teach live. Grow together.
+          Live knowledge transfer — for every professional.
         </p>
       </div>
 
       <div className="mt-8 space-y-5">
         <RoleCard
           href="/signup"
-          badge={<Badge variant="info">Aspirational</Badge>}
+          badge={<Badge variant="info">Cohorts</Badge>}
           icon={<GraduationCap className="size-9 text-primary-soft" />}
           gradient="from-[#1f3b66] to-[#0d1b33]"
-          title="I'm a Student"
-          description="Access live tutoring sessions from top-tier educators across the continent."
+          title="I'm a Learner"
+          description="Join live cohort sessions and 1:1 bookings with verified professionals across Africa."
           cta="Start Learning"
         />
         <RoleCard
@@ -29,8 +29,8 @@ export default function LandingPage() {
           badge={<Badge variant="danger">Expert</Badge>}
           icon={<Presentation className="size-9 text-teal" />}
           gradient="from-[#11324a] to-[#0c1626]"
-          title="I'm a Teacher"
-          description="Monetize your expertise and reach thousands of students in real-time."
+          title="I'm a Professional"
+          description="Monetize your expertise — host live cohorts and 1:1 sessions in real time."
           cta="Start Teaching"
         />
       </div>
@@ -79,7 +79,7 @@ function RoleCard({
       className="tap block overflow-hidden rounded-3xl bg-white shadow-xl transition-transform active:scale-[0.99]"
     >
       <div
-        className={`relative grid h-44 place-items-center bg-gradient-to-br ${gradient}`}
+        className={`relative grid h-44 place-items-center bg-linear-to-br ${gradient}`}
       >
         <div className="grid size-20 place-items-center rounded-2xl bg-white/10 backdrop-blur-sm ring-1 ring-white/15">
           {icon}

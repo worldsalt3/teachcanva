@@ -61,7 +61,7 @@ export default function SettingsPage() {
               <p className="truncate font-display text-lg font-bold text-fg">
                 {name || studentName}
               </p>
-              <p className="text-[13px] text-fg-muted">Student · Lagos</p>
+              <p className="text-[13px] text-fg-muted">Learner · Lagos</p>
             </div>
           </div>
 

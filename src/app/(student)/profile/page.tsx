@@ -81,7 +81,7 @@ const menu: { heading: string; items: MenuItem[] }[] = [
         tint: "bg-surface-2 text-fg-muted",
       },
       {
-        label: "Become a tutor",
+        label: "Become a professional",
         icon: Presentation,
         href: "/teach/apply",
         tint: "bg-success/15 text-success-bright",
@@ -109,7 +109,7 @@ export default function StudentProfilePage() {
               {studentName}
             </p>
             <p className="text-[13px] text-fg-muted">
-              Student · Lagos, Nigeria
+              Learner · Lagos, Nigeria
             </p>
             <Link
               href="/settings"

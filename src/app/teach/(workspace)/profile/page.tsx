@@ -15,9 +15,10 @@ import {
   Star,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
+import { ProgressBar } from "@/components/ui/progress";
 import { currentTeacher } from "@/lib/mock";
 import { useApp } from "@/lib/store/app-provider";
-import { formatCompact, formatTP } from "@/lib/utils";
+import { formatCompact, formatTP, tpLevel } from "@/lib/utils";
 
 interface MenuItem {
   label: string;
@@ -94,6 +95,7 @@ const menu: { heading: string; items: MenuItem[] }[] = [
 
 export default function TeacherProfilePage() {
   const { teacherWallet, signOut } = useApp();
+  const level = tpLevel(teacherWallet.tpBalance);
 
   return (
     <div className="flex-1">
@@ -114,13 +116,35 @@ export default function TeacherProfilePage() {
               <BadgeCheck className="size-5 shrink-0 fill-primary text-white" />
             </div>
             <p className="text-[13px] text-fg-muted">
-              Tutor · Mathematics &amp; Physics
+              Professional · Mathematics &amp; Physics
             </p>
             <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-semibold text-success-bright">
               <BadgeCheck className="size-3.5" />
-              Verified tutor
+              Verified professional
             </span>
           </div>
+        </div>
+
+        <div className="rounded-card border border-gold/25 bg-gold/10 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[13px] text-fg-muted">Teaching Points level</p>
+            <span className="rounded-full bg-gold/20 px-2.5 py-1 text-[11px] font-bold text-gold">
+              {level.name}
+            </span>
+          </div>
+          <p className="mt-1 font-display text-xl font-bold text-fg">
+            {formatTP(teacherWallet.tpBalance)}
+          </p>
+          <ProgressBar
+            value={level.progress * 100}
+            className="bg-gold"
+            trackClassName="mt-3 bg-surface-2"
+          />
+          <p className="mt-1.5 text-[12px] text-fg-muted">
+            {level.nextAt
+              ? `${formatTP(level.nextAt - teacherWallet.tpBalance)} to the next level`
+              : "Top level reached — Platinum professional"}
+          </p>
         </div>
 
         <div className="grid grid-cols-3 overflow-hidden rounded-card border border-border bg-surface text-center">

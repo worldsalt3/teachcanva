@@ -34,6 +34,8 @@ export interface Teacher {
   reviewCount: number;
   sessionsCount: number;
   hourlyRate: number;
+  /** Max seats this professional accepts in a cohort live session. */
+  cohortCapacity: number;
   sessionLengthMins: number;
   isLive: boolean;
   isPro: boolean;
@@ -47,7 +49,7 @@ export interface Teacher {
   reviews: Review[];
 }
 
-export type SessionStatus = "live" | "upcoming" | "completed";
+export type SessionStatus = "live" | "upcoming" | "completed" | "cancelled";
 
 export interface Session {
   id: string;
@@ -61,6 +63,30 @@ export interface Session {
   countdown?: string; // "in 2h 14m"
   replay?: boolean;
   rating?: number;
+  /** Amount (₦) held in escrow for this booking; refunded on cancellation. */
+  amount?: number;
+}
+
+export type CohortStatus = "scheduled" | "live" | "ended";
+
+/** A 1:many cohort live session hosted by a professional. */
+export interface CohortSession {
+  id: string;
+  professionalId: string;
+  professionalName: string;
+  title: string;
+  topic: string; // e.g. "Product Design"
+  tag: string; // short vertical label, e.g. "DESIGN"
+  dateLabel: string; // "OCT 26"
+  timeLabel: string; // "06:00 PM"
+  countdown?: string; // "in 2d 4h"
+  durationMins: number;
+  seatLimit: number;
+  seatsTaken: number;
+  pricePerSeat: number;
+  status: CohortStatus;
+  /** Set when the session is part of a scheduled series / workshop. */
+  series?: { name: string; part: number; of: number };
 }
 
 export interface LiveNowItem {

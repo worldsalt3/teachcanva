@@ -6,7 +6,8 @@ import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/sheet";
 import { TeacherCard } from "@/components/teacher/teacher-card";
-import { getTeachers, topics } from "@/lib/mock";
+import { topics } from "@/lib/mock";
+import { useApp } from "@/lib/store/app-provider";
 import { cn } from "@/lib/utils";
 
 const TOPIC_KEYWORDS: Record<string, string[]> = {
@@ -32,6 +33,14 @@ const PRICE_OPTIONS = [
   { label: "≤ ₦15,000", value: 15000 },
 ];
 
+const AVAIL_OPTIONS = [
+  { label: "Any", value: "any" },
+  { label: "Live now", value: "live" },
+  { label: "Scheduled", value: "scheduled" },
+] as const;
+
+type Availability = (typeof AVAIL_OPTIONS)[number]["value"];
+
 const SORT_OPTIONS = [
   { label: "Top rated", value: "rating" },
   { label: "Lowest price", value: "price-asc" },
@@ -41,18 +50,20 @@ const SORT_OPTIONS = [
 type Sort = (typeof SORT_OPTIONS)[number]["value"];
 
 export default function ExplorePage() {
-  const allTeachers = getTeachers();
+  const { teachers: allTeachers } = useApp();
   const [query, setQuery] = useState("");
   const [topic, setTopic] = useState("all");
   const [ratingMin, setRatingMin] = useState(0);
   const [maxPrice, setMaxPrice] = useState(0);
   const [liveOnly, setLiveOnly] = useState(false);
+  const [availability, setAvailability] = useState<Availability>("any");
   const [sort, setSort] = useState<Sort>("rating");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const activeFilters =
     (ratingMin > 0 ? 1 : 0) +
     (maxPrice > 0 ? 1 : 0) +
+    (availability !== "any" ? 1 : 0) +
     (sort !== "rating" ? 1 : 0);
 
   const results = useMemo(() => {
@@ -68,6 +79,8 @@ export default function ExplorePage() {
       if (ratingMin && t.rating < ratingMin) return false;
       if (maxPrice && t.hourlyRate > maxPrice) return false;
       if (liveOnly && !t.isLive) return false;
+      if (availability === "live" && !t.isLive) return false;
+      if (availability === "scheduled" && t.isLive) return false;
       return true;
     });
 
@@ -76,11 +89,21 @@ export default function ExplorePage() {
       if (sort === "price-desc") return b.hourlyRate - a.hourlyRate;
       return b.rating - a.rating;
     });
-  }, [allTeachers, query, topic, ratingMin, maxPrice, liveOnly, sort]);
+  }, [
+    allTeachers,
+    query,
+    topic,
+    ratingMin,
+    maxPrice,
+    liveOnly,
+    availability,
+    sort,
+  ]);
 
   const resetFilters = () => {
     setRatingMin(0);
     setMaxPrice(0);
+    setAvailability("any");
     setSort("rating");
   };
 
@@ -88,14 +111,14 @@ export default function ExplorePage() {
     <div className="flex-1">
       <header className="sticky top-0 z-30 bg-canvas/85 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl">
         <h1 className="mb-3 font-display text-2xl font-bold tracking-tight text-fg">
-          Explore Tutors
+          Explore Professionals
         </h1>
         <div className="flex h-12 items-center gap-3 rounded-2xl border border-border bg-surface px-4">
           <Search className="size-5 shrink-0 text-fg-faint" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search topics, subjects or teachers"
+            placeholder="Search topics, skills or professionals"
             className="min-w-0 flex-1 bg-transparent text-sm text-fg outline-none placeholder:text-fg-faint"
           />
           {query && (
@@ -150,7 +173,8 @@ export default function ExplorePage() {
 
       <div className="mt-4 px-5">
         <p className="mb-3 text-[13px] text-fg-muted">
-          {results.length} {results.length === 1 ? "tutor" : "tutors"} available
+          {results.length}{" "}
+          {results.length === 1 ? "professional" : "professionals"} available
         </p>
         <div className="space-y-3">
           {results.map((teacher) => (
@@ -158,7 +182,7 @@ export default function ExplorePage() {
           ))}
           {results.length === 0 && (
             <div className="rounded-card border border-dashed border-border-soft py-12 text-center">
-              <p className="font-semibold text-fg">No tutors found</p>
+              <p className="font-semibold text-fg">No professionals found</p>
               <p className="mt-1 text-[13px] text-fg-muted">
                 Try a different search or adjust your filters.
               </p>
@@ -190,6 +214,17 @@ export default function ExplorePage() {
                 key={o.label}
                 selected={maxPrice === o.value}
                 onClick={() => setMaxPrice(o.value)}
+              >
+                {o.label}
+              </Chip>
+            ))}
+          </FilterGroup>
+          <FilterGroup label="Availability">
+            {AVAIL_OPTIONS.map((o) => (
+              <Chip
+                key={o.value}
+                selected={availability === o.value}
+                onClick={() => setAvailability(o.value)}
               >
                 {o.label}
               </Chip>

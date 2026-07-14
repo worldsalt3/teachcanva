@@ -11,7 +11,7 @@ export interface SearchTriggerProps {
 /** Read-only search field that navigates to a search screen on tap. */
 export function SearchTrigger({
   href = "/explore",
-  placeholder = "Search topics, subjects or teachers",
+  placeholder = "Search topics, skills or professionals",
   className,
 }: SearchTriggerProps) {
   return (

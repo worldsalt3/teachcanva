@@ -11,14 +11,15 @@ import {
   UpcomingSessionCard,
 } from "@/components/session/upcoming-session-card";
 import { TeacherRow } from "@/components/teacher/teacher-card";
-import { getLiveNow, getRecommendedTeachers, studentPast } from "@/lib/mock";
+import { getLiveNow, recommendedTeacherIds, studentPast } from "@/lib/mock";
 import { useApp } from "@/lib/store/app-provider";
 
 export default function StudentHomePage() {
-  const { studentName, studentBookings, unreadCount } = useApp();
+  const { studentName, studentBookings, unreadCount, teachers } = useApp();
   const firstName = studentName.split(" ")[0];
   const live = getLiveNow();
-  const recommended = getRecommendedTeachers();
+  const featured = teachers.filter((t) => recommendedTeacherIds.includes(t.id));
+  const recommended = featured.length ? featured : teachers.slice(0, 3);
 
   return (
     <div className="flex-1">
@@ -88,7 +89,7 @@ export default function StudentHomePage() {
                 href="/explore"
                 className="mt-1 inline-block text-[13px] font-semibold text-primary-soft"
               >
-                Find a tutor
+                Find a professional
               </Link>
             </div>
           )}
@@ -125,7 +126,7 @@ export default function StudentHomePage() {
         <div className="flex w-full max-w-110 justify-end px-5">
           <Link
             href="/explore"
-            aria-label="Find a tutor"
+            aria-label="Find a professional"
             className="tap pointer-events-auto grid size-14 place-items-center rounded-full bg-primary text-white shadow-xl shadow-primary/40 transition-transform active:scale-95"
           >
             <Plus className="size-6" />
