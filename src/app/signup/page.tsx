@@ -187,7 +187,11 @@ export default function SignupPage() {
           </Field>
 
           {role === "teacher" ? (
-            <Field label="What is your profession?" htmlFor="profession" tone="light">
+            <Field
+              label="What is your profession?"
+              htmlFor="profession"
+              tone="light"
+            >
               <Input
                 id="profession"
                 tone="light"
