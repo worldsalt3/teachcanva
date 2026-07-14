@@ -91,7 +91,7 @@ export function TeacherProfile({ teacher }: { teacher: Teacher }) {
           />
           <Badge variant="gold" className="mb-2">
             <Sparkles className="size-3.5" />
-            Earn {teacher.tpBonusPerHour} TP / hr
+            Earn {teacher.tpBonusPerHour} LP / hr
           </Badge>
         </div>
 

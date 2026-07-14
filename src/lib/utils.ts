@@ -14,9 +14,14 @@ export function formatNaira(amount: number, opts?: { decimals?: boolean }) {
   })}`;
 }
 
-/** Format Teaching Points, e.g. 1,240 TP */
+/** Format Teaching Points (professionals), e.g. 1,240 TP */
 export function formatTP(points: number) {
   return `${points.toLocaleString("en-NG")} TP`;
+}
+
+/** Format Learning Points (learners), e.g. 320 LP */
+export function formatLP(points: number) {
+  return `${points.toLocaleString("en-NG")} LP`;
 }
 
 export type TPLevelName = "Bronze" | "Silver" | "Gold" | "Platinum";

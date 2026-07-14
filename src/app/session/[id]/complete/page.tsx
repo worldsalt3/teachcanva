@@ -12,7 +12,7 @@ import { AuthGate } from "@/components/layout/auth-gate";
 import { useApp } from "@/lib/store/app-provider";
 import { isSupabaseEnabled } from "@/lib/services/config";
 import { completedSession, sessionRewards } from "@/lib/mock";
-import { formatNaira, formatTP } from "@/lib/utils";
+import { formatNaira, formatLP } from "@/lib/utils";
 
 const CONFETTI_COLORS = [
   "#2563eb",
@@ -125,7 +125,7 @@ export default function SessionCompletePage() {
               <span className="grid size-10 place-items-center rounded-full bg-gold/20 text-gold">
                 <Sparkles className="size-5" />
               </span>
-              <p className="font-semibold text-fg">Teaching Points earned</p>
+              <p className="font-semibold text-fg">Learning Points earned</p>
             </div>
             <p className="font-display text-2xl font-extrabold text-gold">
               +{session.totalTp}
@@ -139,7 +139,7 @@ export default function SessionCompletePage() {
               >
                 <span className="text-fg-muted">{reward.label}</span>
                 <span className="font-semibold text-fg">
-                  +{formatTP(reward.tp)}
+                  +{formatLP(reward.tp)}
                 </span>
               </div>
             ))}
