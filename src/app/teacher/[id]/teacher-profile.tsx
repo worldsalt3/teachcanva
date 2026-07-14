@@ -11,6 +11,7 @@ import {
   Share2,
   Sparkles,
   Star,
+  Users,
 } from "lucide-react";
 import { MediaThumb } from "@/components/ui/media";
 import { Avatar } from "@/components/ui/avatar";
@@ -60,7 +61,7 @@ export function TeacherProfile({ teacher }: { teacher: Teacher }) {
               <Share2 className="size-5" />
             </CoverButton>
             <CoverButton
-              label={saved ? "Saved" : "Save tutor"}
+              label={saved ? "Saved" : "Save professional"}
               onClick={() => setSaved((v) => !v)}
             >
               <Heart
@@ -193,6 +194,18 @@ function AboutTab({ teacher }: { teacher: Teacher }) {
   return (
     <div className="space-y-6">
       <p className="text-[14px] leading-relaxed text-fg-muted">{teacher.bio}</p>
+
+      <div className="flex items-center gap-3 rounded-card border border-border bg-surface p-4">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal/15 text-teal">
+          <Users className="size-5" />
+        </span>
+        <div>
+          <p className="font-semibold text-fg">Cohort live sessions</p>
+          <p className="text-[13px] text-fg-muted">
+            Hosts cohorts of up to {teacher.cohortCapacity} members
+          </p>
+        </div>
+      </div>
 
       <div>
         <h3 className="mb-3 font-display text-base font-bold text-fg">

@@ -14,11 +14,40 @@ import {
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { submitTeacherApplication } from "@/lib/services/repository";
 
 export default function TeacherApplyPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [contact, setContact] = useState("");
+  const [subjects, setSubjects] = useState("");
+  const [rate, setRate] = useState("");
+  const [bio, setBio] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      // Persist the application when the backend is on; the stub path just
+      // continues to the workspace.
+      await submitTeacherApplication({
+        fullName: name.trim(),
+        email: contact.trim(),
+        subjects: subjects
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        experience: rate ? `₦${rate}/hr` : "",
+        bio: bio.trim(),
+      });
+      router.push("/teach/dashboard");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <main className="min-h-dvh pb-10">
@@ -35,7 +64,9 @@ export default function TeacherApplyPage() {
       </div>
 
       <div className="px-6 pb-2 text-center">
-        <h1 className="font-display text-2xl font-bold">Join as a Tutor</h1>
+        <h1 className="font-display text-2xl font-bold">
+          Join as a Professional
+        </h1>
         <p className="mx-auto mt-1.5 max-w-xs text-sm text-fg-muted">
           Share your knowledge and earn with the leading learning platform in
           Africa.
@@ -43,10 +74,7 @@ export default function TeacherApplyPage() {
       </div>
 
       <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          router.push("/teach/dashboard");
-        }}
+        onSubmit={handleSubmit}
         className="mx-4 mt-4 rounded-3xl bg-white p-6 text-ink shadow-xl"
       >
         <div className="flex flex-col items-center">
@@ -90,10 +118,24 @@ export default function TeacherApplyPage() {
 
         <div className="mt-6 space-y-5">
           <Field label="Full name" htmlFor="name" tone="light">
-            <Input id="name" tone="light" placeholder="e.g. Chinelo Olumide" />
+            <Input
+              id="name"
+              tone="light"
+              placeholder="e.g. Chinelo Olumide"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
           </Field>
           <Field label="Email or phone number" htmlFor="contact" tone="light">
-            <Input id="contact" tone="light" placeholder="Enter contact info" />
+            <Input
+              id="contact"
+              tone="light"
+              placeholder="Enter contact info"
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+              required
+            />
           </Field>
           <Field label="Create password" htmlFor="password" tone="light">
             <PasswordInput id="password" tone="light" placeholder="••••••••" />
@@ -105,6 +147,8 @@ export default function TeacherApplyPage() {
                 tone="light"
                 className="pr-11"
                 placeholder="e.g. Mathematics, Physics"
+                value={subjects}
+                onChange={(e) => setSubjects(e.target.value)}
               />
               <GraduationCap className="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-teal" />
             </div>
@@ -120,11 +164,13 @@ export default function TeacherApplyPage() {
                 inputMode="numeric"
                 className="pl-9"
                 placeholder="5,000"
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
               />
             </div>
           </Field>
           <Field
-            label="Tell students about yourself"
+            label="Tell your cohort about yourself"
             htmlFor="bio"
             tone="light"
             hint="Bio"
@@ -133,7 +179,9 @@ export default function TeacherApplyPage() {
               id="bio"
               tone="light"
               rows={4}
-              placeholder="Briefly describe your teaching style, experience, and what students can expect…"
+              placeholder="Briefly describe your teaching style, experience, and what members can expect…"
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
             />
           </Field>
         </div>
@@ -149,8 +197,15 @@ export default function TeacherApplyPage() {
           </div>
         </div>
 
-        <Button type="submit" size="lg" fullWidth className="mt-6">
-          Create Instructor Profile <ArrowRight className="size-5" />
+        <Button
+          type="submit"
+          size="lg"
+          fullWidth
+          className="mt-6"
+          disabled={submitting}
+        >
+          {submitting ? "Submitting…" : "Create Instructor Profile"}{" "}
+          <ArrowRight className="size-5" />
         </Button>
       </form>
 

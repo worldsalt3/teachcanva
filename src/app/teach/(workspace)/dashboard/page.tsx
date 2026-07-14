@@ -15,7 +15,7 @@ import { formatNaira, formatTP } from "@/lib/utils";
 const TEACH_LIVE_HREF = "/live/live-advanced-calculus?as=teacher";
 
 export default function TeacherDashboardPage() {
-  const { teacherWallet, unreadCount } = useApp();
+  const { teacherWallet, unreadCount, notifyGoLive } = useApp();
 
   return (
     <div className="flex-1">
@@ -65,6 +65,7 @@ export default function TeacherDashboardPage() {
           </p>
           <Link
             href={TEACH_LIVE_HREF}
+            onClick={() => notifyGoLive("Instant live session")}
             className="tap mt-4 inline-flex h-12 items-center gap-2 rounded-xl bg-white px-5 font-semibold text-primary-700 transition-transform active:scale-[0.98]"
           >
             <Video className="size-5" />

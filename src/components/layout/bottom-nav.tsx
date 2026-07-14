@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Home,
   Search,
-  PlaySquare,
+  UsersRound,
   Wallet,
   User,
   CalendarDays,
@@ -24,12 +24,7 @@ export interface NavItem {
 const studentItems: NavItem[] = [
   { label: "Home", href: "/home", icon: Home },
   { label: "Explore", href: "/explore", icon: Search, match: "/explore" },
-  {
-    label: "Live",
-    href: "/live/live-advanced-calculus?as=student",
-    icon: PlaySquare,
-    match: "/live",
-  },
+  { label: "Cohorts", href: "/cohorts", icon: UsersRound, match: "/cohorts" },
   { label: "Wallet", href: "/wallet", icon: Wallet },
   { label: "Profile", href: "/profile", icon: User },
 ];

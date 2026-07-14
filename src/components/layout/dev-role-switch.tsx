@@ -14,7 +14,7 @@ export function DevRoleSwitch() {
   const isTeacher = pathname.startsWith("/teach");
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[92px] z-40 flex justify-center">
+    <div className="pointer-events-none fixed inset-x-0 bottom-23 z-40 flex justify-center">
       <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-border-soft bg-surface-2/80 p-1 text-xs shadow-xl backdrop-blur-md">
         <span className="px-2 text-[10px] font-bold uppercase tracking-widest text-fg-faint">
           Dev
@@ -28,7 +28,7 @@ export function DevRoleSwitch() {
               : "text-fg-muted hover:text-fg",
           )}
         >
-          <GraduationCap className="size-3.5" /> Student
+          <GraduationCap className="size-3.5" /> Learner
         </Link>
         <Link
           href="/teach/dashboard"
@@ -37,7 +37,7 @@ export function DevRoleSwitch() {
             isTeacher ? "bg-primary text-white" : "text-fg-muted hover:text-fg",
           )}
         >
-          <Presentation className="size-3.5" /> Teacher
+          <Presentation className="size-3.5" /> Professional
         </Link>
       </div>
     </div>

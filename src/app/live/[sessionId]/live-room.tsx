@@ -25,6 +25,8 @@ import { MediaThumb } from "@/components/ui/media";
 import { LiveCanvasBoard } from "@/components/live/live-canvas-board";
 import { useApp } from "@/lib/store/app-provider";
 import { useVideoRoom } from "@/lib/services/use-video-room";
+import { isSupabaseEnabled } from "@/lib/services/config";
+import { fetchChat, subscribeChat } from "@/lib/services/repository";
 import { cn } from "@/lib/utils";
 import type { liveSession } from "@/lib/mock";
 
@@ -57,9 +59,32 @@ export function LiveRoom({ session }: { session: LiveSession }) {
   const counterpartName =
     role === "teacher" ? session.studentName : session.teacherName;
   const room = useVideoRoom({ roomId: session.id, identity, counterpartName });
+  const { attachRemoteVideo } = room;
   const connected = room.state === "connected";
-  const { chat, sendChatMessage, slides } = useApp();
+  const {
+    chat,
+    sendChatMessage,
+    receiveChatMessage,
+    replaceChatThread,
+    slides,
+  } = useApp();
   const messages = chat[session.id] ?? [];
+
+  // Realtime chat sync: load backend history once, then stream new messages.
+  useEffect(() => {
+    if (!isSupabaseEnabled) return;
+    let cancelled = false;
+    void fetchChat(session.id).then((history) => {
+      if (!cancelled) replaceChatThread(session.id, history);
+    });
+    const unsubscribe = subscribeChat(session.id, (message) => {
+      receiveChatMessage(session.id, message);
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [session.id, receiveChatMessage, replaceChatThread]);
 
   // Slides the teacher prepared for this class (passed via ?prep=<sessionId>).
   const prepId = params.get("prep");
@@ -68,12 +93,28 @@ export function LiveRoom({ session }: { session: LiveSession }) {
     [prepId, slides],
   );
   const [slideIndex, setSlideIndex] = useState(0);
-  const teacherSlide = useMemo(
+  const current = useMemo(
     () =>
       prepared.length
         ? prepared[Math.min(slideIndex, prepared.length - 1)]
-        : { title: session.slideTitle, body: session.slideBody },
-    [prepared, slideIndex, session.slideTitle, session.slideBody],
+        : undefined,
+    [prepared, slideIndex],
+  );
+  // Text slide for the board (falls back to the session's default slide).
+  const teacherSlide = useMemo(() => {
+    if (!current) return { title: session.slideTitle, body: session.slideBody };
+    if (current.kind === "image" || current.kind === "video") return undefined;
+    return { title: current.title, body: current.body };
+  }, [current, session.slideTitle, session.slideBody]);
+  // Uploaded photo/video for the current slide, if any.
+  const teacherMedia = useMemo(
+    () =>
+      current &&
+      (current.kind === "image" || current.kind === "video") &&
+      current.src
+        ? { type: current.kind, src: current.src }
+        : undefined,
+    [current],
   );
 
   const [chatOpen, setChatOpen] = useState(false);
@@ -186,6 +227,19 @@ export function LiveRoom({ session }: { session: LiveSession }) {
             className="h-40 rounded-2xl"
             icon={false}
           >
+            {room.live && (
+              <video
+                ref={attachRemoteVideo}
+                autoPlay
+                playsInline
+                muted
+                className={cn(
+                  "absolute inset-0 h-full w-full bg-black object-cover",
+                  (!room.remoteConnected || !room.remote.cameraOn) &&
+                    "opacity-0",
+                )}
+              />
+            )}
             {!connected && (
               <div className="absolute inset-0 z-10 grid place-items-center bg-canvas/55 backdrop-blur-sm">
                 <span className="inline-flex items-center gap-2 rounded-full bg-ink/85 px-3 py-1.5 text-[12px] font-semibold text-white">
@@ -234,8 +288,10 @@ export function LiveRoom({ session }: { session: LiveSession }) {
 
       <LiveCanvasBoard
         slide={role === "teacher" ? teacherSlide : undefined}
+        media={role === "teacher" ? teacherMedia : undefined}
         defaultMode="slide"
         className="flex-1"
+        syncId={session.id}
         overlay={
           role === "teacher" ? (
             <>
@@ -272,6 +328,19 @@ export function LiveRoom({ session }: { session: LiveSession }) {
                   className="h-20 rounded-xl ring-2 ring-white/25"
                   icon={false}
                 >
+                  {room.live && (
+                    <video
+                      ref={attachRemoteVideo}
+                      autoPlay
+                      playsInline
+                      muted
+                      className={cn(
+                        "absolute inset-0 h-full w-full bg-black object-cover",
+                        (!room.remoteConnected || !room.remote.cameraOn) &&
+                          "opacity-0",
+                      )}
+                    />
+                  )}
                   <span className="absolute inset-x-0 bottom-0 truncate bg-black/40 px-2 py-1 text-[11px] font-medium text-white">
                     {session.studentName}
                   </span>

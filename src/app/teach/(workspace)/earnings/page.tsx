@@ -8,7 +8,8 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { TransactionRow } from "@/components/wallet/transaction-row";
 import { useApp } from "@/lib/store/app-provider";
 import { makePaymentReference } from "@/lib/services";
-import { cn, formatNaira, formatTP } from "@/lib/utils";
+import { isPaystackEnabled } from "@/lib/services/config";
+import { cn, formatNaira, formatTP, tpLevel } from "@/lib/utils";
 
 export default function TeacherEarningsPage() {
   const { teacherWallet: wallet, withdrawWallet } = useApp();
@@ -21,12 +22,30 @@ export default function TeacherEarningsPage() {
 
   const handleWithdraw = async () => {
     setProcessing(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    withdrawWallet("teacher", amount, makePaymentReference("PAYOUT"));
-    setProcessing(false);
-    setWithdrawOpen(false);
-    setToast(`${formatNaira(amount)} sent to your bank`);
-    setTimeout(() => setToast(null), 2600);
+    const reference = makePaymentReference("PAYOUT");
+    try {
+      if (isPaystackEnabled) {
+        // Server-side: balance check, Paystack transfer, wallet debit.
+        const res = await fetch("/api/payments/withdraw", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount, reference }),
+        });
+        if (!res.ok) {
+          const json = await res.json().catch(() => null);
+          notify(json?.error ?? "Withdrawal failed — try again.");
+          return;
+        }
+      } else {
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      withdrawWallet("teacher", amount, reference);
+      setWithdrawOpen(false);
+      setToast(`${formatNaira(amount)} sent to your bank`);
+      setTimeout(() => setToast(null), 2600);
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const notify = (msg: string) => {
@@ -88,19 +107,29 @@ export default function TeacherEarningsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 rounded-card border border-gold/25 bg-gold/10 p-4">
-          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-gold/20 text-gold">
-            <Sparkles className="size-5" />
-          </span>
-          <div className="flex-1">
-            <p className="text-[13px] text-fg-muted">Teaching Points</p>
-            <p className="font-display text-xl font-bold text-fg">
-              {formatTP(wallet.tpBalance)}
-            </p>
+        <div className="rounded-card border border-gold/25 bg-gold/10 p-4">
+          <div className="flex items-center gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-gold/20 text-gold">
+              <Sparkles className="size-5" />
+            </span>
+            <div className="flex-1">
+              <p className="text-[13px] text-fg-muted">Teaching Points</p>
+              <p className="font-display text-xl font-bold text-fg">
+                {formatTP(wallet.tpBalance)}
+              </p>
+            </div>
+            <span className="rounded-full bg-gold/20 px-2.5 py-1 text-[11px] font-semibold text-gold">
+              {tpLevel(wallet.tpBalance).name}
+            </span>
           </div>
-          <span className="rounded-full bg-gold/20 px-2.5 py-1 text-[11px] font-semibold text-gold">
-            2× live bonus
-          </span>
+          <p className="mt-3 text-[12px] text-fg-muted">
+            {(() => {
+              const level = tpLevel(wallet.tpBalance);
+              return level.nextAt
+                ? `${formatTP(level.nextAt - wallet.tpBalance)} to ${level.nextAt === 15000 ? "Platinum" : "the next level"} · 2× live bonus active`
+                : "Platinum — top level reached · 2× live bonus active";
+            })()}
+          </p>
         </div>
 
         <div>

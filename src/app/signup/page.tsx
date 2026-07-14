@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, GraduationCap, Presentation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -11,23 +11,86 @@ import { Chip } from "@/components/ui/chip";
 import { ProgressBar } from "@/components/ui/progress";
 import { GoogleIcon } from "@/components/icons/google";
 import { interests } from "@/lib/mock";
+import type { Role } from "@/lib/mock/types";
 import { useApp } from "@/lib/store/app-provider";
+import { isSupabaseEnabled } from "@/lib/services/config";
+import { signInWithGoogle, signUpWithEmail } from "@/lib/services/auth";
+import { cn } from "@/lib/utils";
+
+const ROLES: {
+  value: Role;
+  label: string;
+  desc: string;
+  icon: typeof GraduationCap;
+}[] = [
+  {
+    value: "student",
+    label: "Cohort Member",
+    desc: "Join live sessions & learn",
+    icon: GraduationCap,
+  },
+  {
+    value: "teacher",
+    label: "Professional",
+    desc: "Teach what you know & earn",
+    icon: Presentation,
+  },
+];
 
 export default function SignupPage() {
   const router = useRouter();
-  const { signIn, setProfileName } = useApp();
+  const { signIn, setProfileName, setRole } = useApp();
+  const [role, setRoleChoice] = useState<Role>("student");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [selected, setSelected] = useState<string[]>(["Further Maths"]);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const homeHref = role === "teacher" ? "/teach/dashboard" : "/home";
 
   const toggle = (topic: string) =>
     setSelected((prev) =>
       prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic],
     );
 
-  const completeSignup = () => {
+  const completeSignup = async () => {
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    const res = await signUpWithEmail({
+      name: name.trim() || email.split("@")[0],
+      email,
+      password,
+      role,
+    });
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.error ?? "Could not create your account.");
+      return;
+    }
     if (name.trim()) setProfileName(name);
+    setRole(role);
+    if (res.needsConfirmation) {
+      setNotice("Almost there — check your email to confirm your account.");
+      return;
+    }
     signIn();
-    router.push("/home");
+    router.push(homeHref);
+  };
+
+  const google = async () => {
+    if (isSupabaseEnabled) {
+      const res = await signInWithGoogle(homeHref);
+      if (!res.ok) setError(res.error ?? "Google sign-in failed.");
+      return;
+    }
+    if (name.trim()) setProfileName(name);
+    setRole(role);
+    signIn();
+    router.push(homeHref);
   };
 
   return (
@@ -53,8 +116,42 @@ export default function SignupPage() {
       >
         <h1 className="font-display text-2xl font-bold">Create your account</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Start your learning journey today.
+          Share expertise or learn with a cohort.
         </p>
+
+        <div className="mt-5 grid grid-cols-2 gap-2.5">
+          {ROLES.map((r) => {
+            const active = role === r.value;
+            const Icon = r.icon;
+            return (
+              <button
+                key={r.value}
+                type="button"
+                onClick={() => setRoleChoice(r.value)}
+                aria-pressed={active}
+                className={cn(
+                  "tap rounded-2xl border p-3.5 text-left transition-colors",
+                  active
+                    ? "border-primary bg-primary/8 shadow-sm"
+                    : "border-ink/10 bg-white",
+                )}
+              >
+                <span
+                  className={cn(
+                    "grid size-9 place-items-center rounded-xl",
+                    active ? "bg-primary text-white" : "bg-ink/5 text-ink-soft",
+                  )}
+                >
+                  <Icon className="size-5" />
+                </span>
+                <p className="mt-2 text-sm font-bold text-ink">{r.label}</p>
+                <p className="mt-0.5 text-[12px] leading-snug text-ink-soft">
+                  {r.desc}
+                </p>
+              </button>
+            );
+          })}
+        </div>
 
         <div className="mt-6 space-y-5">
           <Field label="Full name" htmlFor="name" tone="light">
@@ -69,17 +166,28 @@ export default function SignupPage() {
           <Field label="Email or phone number" htmlFor="email" tone="light">
             <Input
               id="email"
+              type="email"
               tone="light"
               placeholder="name@email.com or 080..."
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </Field>
           <Field label="Password" htmlFor="password" tone="light">
-            <PasswordInput id="password" tone="light" placeholder="••••••••" />
+            <PasswordInput
+              id="password"
+              tone="light"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </Field>
 
           <div>
             <p className="mb-3 text-sm font-semibold text-ink">
-              What are you interested in learning?
+              {role === "teacher"
+                ? "What will you teach?"
+                : "What are you interested in learning?"}
             </p>
             <div className="flex flex-wrap gap-2">
               {interests.map((topic) => (
@@ -96,8 +204,26 @@ export default function SignupPage() {
           </div>
         </div>
 
-        <Button type="submit" size="lg" fullWidth className="mt-6">
-          Create Account <ArrowRight className="size-5" />
+        {error && (
+          <p className="mt-4 rounded-xl bg-danger/10 px-3 py-2 text-[13px] font-medium text-danger">
+            {error}
+          </p>
+        )}
+        {notice && (
+          <p className="mt-4 rounded-xl bg-primary/10 px-3 py-2 text-[13px] font-medium text-primary">
+            {notice}
+          </p>
+        )}
+
+        <Button
+          type="submit"
+          size="lg"
+          fullWidth
+          className="mt-6"
+          disabled={busy}
+        >
+          {busy ? "Creating account…" : "Create Account"}{" "}
+          <ArrowRight className="size-5" />
         </Button>
 
         <div className="my-5 flex items-center gap-3 text-xs font-medium text-ink-soft/70">
@@ -107,7 +233,7 @@ export default function SignupPage() {
 
         <button
           type="button"
-          onClick={completeSignup}
+          onClick={google}
           className="tap flex h-13 w-full items-center justify-center gap-3 rounded-2xl border border-ink/10 bg-white text-sm font-semibold text-ink transition-colors hover:bg-ink/3"
         >
           <GoogleIcon className="size-5" /> Continue with Google

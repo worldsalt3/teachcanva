@@ -64,7 +64,7 @@ export default function SessionCompletePage() {
           <Textarea
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
-            placeholder="Share feedback for your tutor (optional)"
+            placeholder="Share feedback for your professional (optional)"
             rows={3}
             className="mt-4"
           />

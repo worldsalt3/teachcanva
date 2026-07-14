@@ -21,10 +21,14 @@ export interface ChatMessage {
 }
 
 /** A presentation slide a teacher prepares for a class. */
+export type SlideKind = "text" | "image" | "video";
+
 export interface Slide {
   id: string;
-  title: string;
-  body: string;
+  kind: SlideKind;
+  title: string; // text slide heading, or caption for a media slide
+  body: string; // text slide content (empty for media slides)
+  src?: string; // image data URL, or video object/data URL
 }
 
 /** Everything needed to create a booking from the booking flow. */
@@ -36,6 +40,20 @@ export interface BookingDraft {
   amount: number; // total charged (₦, major units)
   payWith: "wallet" | "card";
 }
+
+/** Everything needed for a professional to schedule a cohort live session. */
+export interface CohortDraft {
+  title: string;
+  topic: string;
+  dateLabel: string; // "OCT 26"
+  timeLabel: string; // "06:00 PM"
+  durationMins: number;
+  seatLimit: number;
+  pricePerSeat: number; // ₦, major units
+}
+
+/** Outcome of a cohort enrolment attempt. */
+export type EnrolResult = "enrolled" | "waitlisted" | "insufficient";
 
 /** Credentials passed to the auth service on sign up / log in. */
 export interface AuthCredentials {

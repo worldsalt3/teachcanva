@@ -254,7 +254,7 @@ export function BookingFlow({ teacher }: { teacher: Teacher }) {
             </Link>
             <Link href="/explore">
               <Button fullWidth size="lg" variant="neutral">
-                Browse more tutors
+                Browse more professionals
               </Button>
             </Link>
           </div>

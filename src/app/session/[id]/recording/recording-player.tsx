@@ -113,14 +113,30 @@ export function RecordingPlayer({ sessionId }: { sessionId: string }) {
             className="absolute inset-0"
           />
 
-          {activeSlide ? (
+          {activeSlide?.kind === "image" && activeSlide.src ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={activeSlide.src}
+                alt={activeSlide.title || `Slide ${chapterIndex + 1}`}
+                className="absolute inset-0 h-full w-full object-contain"
+              />
+              {activeSlide.title && (
+                <span className="absolute inset-x-0 bottom-0 truncate bg-black/50 px-3 py-2 text-[12px] font-medium text-white">
+                  {activeSlide.title}
+                </span>
+              )}
+            </>
+          ) : activeSlide ? (
             <div className="absolute inset-0 grid place-items-center p-6 text-center">
               <div>
                 <p className="text-[12px] font-semibold uppercase tracking-wide text-white/60">
                   {activeSlide.title || `Slide ${chapterIndex + 1}`}
                 </p>
                 <p className="mt-2 font-display text-xl font-bold text-white">
-                  {activeSlide.body || "—"}
+                  {activeSlide.kind === "video"
+                    ? "Video clip"
+                    : activeSlide.body || "—"}
                 </p>
               </div>
             </div>
@@ -268,7 +284,11 @@ export function RecordingPlayer({ sessionId }: { sessionId: string }) {
                         {slide.title || `Slide ${i + 1}`}
                       </span>
                       <span className="block truncate text-[12px] text-fg-muted">
-                        {slide.body || "—"}
+                        {slide.kind === "image"
+                          ? "Photo"
+                          : slide.kind === "video"
+                            ? "Video clip"
+                            : slide.body || "—"}
                       </span>
                     </span>
                     <span className="shrink-0 text-[11px] font-medium tabular-nums text-fg-faint">

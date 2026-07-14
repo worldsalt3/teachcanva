@@ -27,6 +27,7 @@ export default function WalletPage() {
         amount,
         email: "student@teachcanvas.app",
         label: "Wallet top-up",
+        creditRole: "student",
       });
       if (res.status === "success") {
         topUpWallet("student", amount, res.reference);

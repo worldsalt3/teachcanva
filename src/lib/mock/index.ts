@@ -1,5 +1,10 @@
-import { teachers, recommendedTeacherIds, liveNow } from "./data";
-import type { Teacher } from "./types";
+import {
+  teachers,
+  recommendedTeacherIds,
+  liveNow,
+  cohortSessions,
+} from "./data";
+import type { CohortSession, Teacher } from "./types";
 
 export * from "./types";
 export * from "./data";
@@ -24,4 +29,12 @@ export function getRecommendedTeachers(): Teacher[] {
 
 export function getLiveNow() {
   return liveNow;
+}
+
+export function getCohortSessions(): CohortSession[] {
+  return cohortSessions;
+}
+
+export function getCohortSession(id: string): CohortSession | undefined {
+  return cohortSessions.find((c) => c.id === id);
 }

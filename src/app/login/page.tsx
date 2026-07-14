@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -9,10 +10,39 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { GoogleIcon } from "@/components/icons/google";
 import { Logo } from "@/components/layout/logo";
 import { useApp } from "@/lib/store/app-provider";
+import { isSupabaseEnabled } from "@/lib/services/config";
+import { signInWithEmail, signInWithGoogle } from "@/lib/services/auth";
 
 export default function LoginPage() {
   const router = useRouter();
   const { signIn } = useApp();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setError(null);
+    setBusy(true);
+    const res = await signInWithEmail(email, password);
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.error ?? "Could not log in. Check your details.");
+      return;
+    }
+    signIn();
+    router.push("/home");
+  };
+
+  const google = async () => {
+    if (isSupabaseEnabled) {
+      const res = await signInWithGoogle("/home");
+      if (!res.ok) setError(res.error ?? "Google sign-in failed.");
+      return;
+    }
+    signIn();
+    router.push("/home");
+  };
 
   return (
     <main className="flex min-h-dvh flex-col">
@@ -23,8 +53,7 @@ export default function LoginPage() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          signIn();
-          router.push("/home");
+          submit();
         }}
         className="mx-4 mt-4 rounded-3xl bg-white p-6 text-ink shadow-xl"
       >
@@ -37,22 +66,50 @@ export default function LoginPage() {
           <Field label="Email or phone number" htmlFor="email" tone="light">
             <Input
               id="email"
+              type="email"
               tone="light"
               placeholder="name@email.com or 080..."
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </Field>
           <Field
             label="Password"
             htmlFor="password"
             tone="light"
-            hint={<span className="font-semibold text-primary">Forgot?</span>}
+            hint={
+              <Link
+                href="/forgot-password"
+                className="font-semibold text-primary"
+              >
+                Forgot?
+              </Link>
+            }
           >
-            <PasswordInput id="password" tone="light" placeholder="••••••••" />
+            <PasswordInput
+              id="password"
+              tone="light"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </Field>
         </div>
 
-        <Button type="submit" size="lg" fullWidth className="mt-6">
-          Log In <ArrowRight className="size-5" />
+        {error && (
+          <p className="mt-4 rounded-xl bg-danger/10 px-3 py-2 text-[13px] font-medium text-danger">
+            {error}
+          </p>
+        )}
+
+        <Button
+          type="submit"
+          size="lg"
+          fullWidth
+          className="mt-6"
+          disabled={busy}
+        >
+          {busy ? "Logging in…" : "Log In"} <ArrowRight className="size-5" />
         </Button>
 
         <div className="my-5 flex items-center gap-3 text-xs font-medium text-ink-soft/70">
@@ -62,10 +119,7 @@ export default function LoginPage() {
 
         <button
           type="button"
-          onClick={() => {
-            signIn();
-            router.push("/home");
-          }}
+          onClick={google}
           className="tap flex h-13 w-full items-center justify-center gap-3 rounded-2xl border border-ink/10 bg-white text-sm font-semibold text-ink transition-colors hover:bg-ink/3"
         >
           <GoogleIcon className="size-5" /> Continue with Google
@@ -85,7 +139,7 @@ export default function LoginPage() {
           className="text-sm text-fg-muted hover:text-fg"
         >
           Want to teach?{" "}
-          <span className="font-semibold text-fg">Join as a Tutor</span>
+          <span className="font-semibold text-fg">Join as a Professional</span>
         </Link>
       </div>
     </main>

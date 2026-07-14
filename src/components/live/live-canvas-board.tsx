@@ -2,6 +2,8 @@
 
 import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Eraser, RotateCcw, Trash2 } from "lucide-react";
+import { isSupabaseEnabled } from "@/lib/services/config";
+import { connectBoard, type BoardEvent } from "@/lib/services/repository";
 import { cn } from "@/lib/utils";
 
 const BOARD_BG = "#f4f6fb";
@@ -14,24 +16,40 @@ export interface Slide {
   body: string;
 }
 
+export interface SlideMedia {
+  type: "image" | "video";
+  src: string;
+}
+
 interface LiveCanvasBoardProps {
   slide?: Slide;
+  media?: SlideMedia;
   defaultMode?: "slide" | "free";
   overlay?: ReactNode;
   className?: string;
+  /**
+   * Session id to sync strokes across participants via realtime broadcast.
+   * Requires Supabase; without it the board works standalone.
+   */
+  syncId?: string;
 }
 
 export function LiveCanvasBoard({
   slide,
+  media,
   defaultMode = "free",
   overlay,
   className,
+  syncId,
 }: LiveCanvasBoardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const drawing = useRef(false);
   const last = useRef<{ x: number; y: number } | null>(null);
   const history = useRef<ImageData[]>([]);
+  const sync = useRef<ReturnType<typeof connectBoard> | null>(null);
+  const outbox = useRef<BoardEvent[]>([]);
+  const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [mode, setMode] = useState<"slide" | "free">(
     slide ? defaultMode : "free",
@@ -72,13 +90,18 @@ export function LiveCanvasBoard({
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       ctx.save();
-      ctx.fillStyle = BOARD_BG;
-      ctx.fillRect(0, 0, w, h);
-      if (m === "slide" && slide) drawSlide(ctx, w, h, slide);
+      ctx.clearRect(0, 0, w, h);
+      // With a photo/video underneath, keep the canvas transparent so the media
+      // shows through and the teacher can annotate on top of it.
+      if (!media) {
+        ctx.fillStyle = BOARD_BG;
+        ctx.fillRect(0, 0, w, h);
+        if (m === "slide" && slide) drawSlide(ctx, w, h, slide);
+      }
       ctx.restore();
       history.current = [];
     },
-    [slide, drawSlide],
+    [slide, drawSlide, media],
   );
 
   const setup = useCallback(() => {
@@ -115,6 +138,83 @@ export function LiveCanvasBoard({
     paintBase(mode);
   }, [mode, paintBase]);
 
+  // ── realtime sync ──────────────────────────────────────────────────────────
+  const modeRef = useRef(mode);
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
+
+  const pushHistory = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    history.current.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    if (history.current.length > MAX_HISTORY) history.current.shift();
+  }, []);
+
+  const popHistory = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    const prev = history.current.pop();
+    if (prev) ctx.putImageData(prev, 0, 0);
+  }, []);
+
+  const applyRemote = useCallback(
+    (events: BoardEvent[]) => {
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (!canvas || !ctx) return;
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      for (const ev of events) {
+        switch (ev.type) {
+          case "begin":
+            pushHistory();
+            break;
+          case "seg":
+            ctx.strokeStyle = ev.erase ? BOARD_BG : ev.color;
+            ctx.lineWidth = ev.erase ? 24 : 3.5;
+            ctx.beginPath();
+            ctx.moveTo(ev.x0 * w, ev.y0 * h);
+            ctx.lineTo(ev.x1 * w, ev.y1 * h);
+            ctx.stroke();
+            break;
+          case "undo":
+            popHistory();
+            break;
+          case "clear":
+            paintBase(modeRef.current);
+            break;
+        }
+      }
+    },
+    [pushHistory, popHistory, paintBase],
+  );
+
+  useEffect(() => {
+    if (!syncId || !isSupabaseEnabled) return;
+    const conn = connectBoard(syncId, applyRemote);
+    sync.current = conn;
+    return () => {
+      conn.disconnect();
+      sync.current = null;
+    };
+  }, [syncId, applyRemote]);
+
+  // Batches outgoing events (~8 sends/s) to stay under the realtime
+  // client's default broadcast rate limit.
+  const emit = (ev: BoardEvent) => {
+    if (!sync.current) return;
+    outbox.current.push(ev);
+    flushTimer.current ??= setTimeout(() => {
+      flushTimer.current = null;
+      const events = outbox.current;
+      outbox.current = [];
+      sync.current?.send(events);
+    }, 120);
+  };
+
   const point = (e: React.PointerEvent) => {
     const rect = canvasRef.current!.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -125,8 +225,8 @@ export function LiveCanvasBoard({
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
     e.preventDefault();
-    history.current.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-    if (history.current.length > MAX_HISTORY) history.current.shift();
+    pushHistory();
+    emit({ type: "begin" });
     drawing.current = true;
     last.current = point(e);
     canvas.setPointerCapture(e.pointerId);
@@ -134,8 +234,9 @@ export function LiveCanvasBoard({
 
   const onPointerMove = (e: React.PointerEvent) => {
     if (!drawing.current) return;
-    const ctx = canvasRef.current?.getContext("2d");
-    if (!ctx || !last.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx || !last.current) return;
     const p = point(e);
     ctx.strokeStyle = tool === "eraser" ? BOARD_BG : color;
     ctx.lineWidth = tool === "eraser" ? 24 : 3.5;
@@ -143,6 +244,17 @@ export function LiveCanvasBoard({
     ctx.moveTo(last.current.x, last.current.y);
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    emit({
+      type: "seg",
+      x0: last.current.x / w,
+      y0: last.current.y / h,
+      x1: p.x / w,
+      y1: p.y / h,
+      color,
+      erase: tool === "eraser",
+    });
     last.current = p;
   };
 
@@ -152,28 +264,48 @@ export function LiveCanvasBoard({
   };
 
   const undo = () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-    const prev = history.current.pop();
-    if (prev) ctx.putImageData(prev, 0, 0);
+    popHistory();
+    emit({ type: "undo" });
   };
 
-  const clear = () => paintBase(mode);
+  const clear = () => {
+    paintBase(mode);
+    emit({ type: "clear" });
+  };
 
   return (
     <div className={cn("flex min-h-0 flex-col", className)}>
       <div ref={wrapRef} className="relative min-h-0 flex-1 overflow-hidden">
+        {media?.type === "image" && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={media.src}
+            alt=""
+            className="absolute inset-0 h-full w-full bg-black object-contain"
+          />
+        )}
+        {media?.type === "video" && (
+          <video
+            src={media.src}
+            controls
+            playsInline
+            className="absolute inset-0 h-full w-full bg-black object-contain"
+          />
+        )}
+
         <canvas
           ref={canvasRef}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endStroke}
           onPointerCancel={endStroke}
-          className="absolute inset-0 touch-none"
+          className={cn(
+            "absolute inset-0 touch-none",
+            media?.type === "video" && "pointer-events-none",
+          )}
         />
 
-        {slide && (
+        {slide && !media && (
           <div className="absolute left-3 top-3 flex rounded-full border border-black/10 bg-white/85 p-0.5 shadow-sm backdrop-blur-sm">
             {(["slide", "free"] as const).map((m) => (
               <button
@@ -194,42 +326,44 @@ export function LiveCanvasBoard({
         {overlay}
       </div>
 
-      <div className="no-scrollbar flex items-center gap-2 overflow-x-auto border-t border-border bg-surface px-3 py-2.5">
-        <div className="flex items-center gap-1.5">
-          {COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              aria-label={`Pen color ${c}`}
-              onClick={() => {
-                setColor(c);
-                setTool("pen");
-              }}
-              className={cn(
-                "size-7 shrink-0 rounded-full ring-2 ring-offset-2 ring-offset-surface transition-transform",
-                color === c && tool === "pen"
-                  ? "scale-110 ring-white"
-                  : "ring-transparent",
-              )}
-              style={{ backgroundColor: c }}
-            />
-          ))}
+      {media?.type !== "video" && (
+        <div className="no-scrollbar flex items-center gap-2 overflow-x-auto border-t border-border bg-surface px-3 py-2.5">
+          <div className="flex items-center gap-1.5">
+            {COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                aria-label={`Pen color ${c}`}
+                onClick={() => {
+                  setColor(c);
+                  setTool("pen");
+                }}
+                className={cn(
+                  "size-7 shrink-0 rounded-full ring-2 ring-offset-2 ring-offset-surface transition-transform",
+                  color === c && tool === "pen"
+                    ? "scale-110 ring-white"
+                    : "ring-transparent",
+                )}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+          <div className="mx-1 h-6 w-px shrink-0 bg-border" />
+          <ToolButton
+            label="Eraser"
+            active={tool === "eraser"}
+            onClick={() => setTool("eraser")}
+          >
+            <Eraser className="size-5" />
+          </ToolButton>
+          <ToolButton label="Undo" onClick={undo}>
+            <RotateCcw className="size-5" />
+          </ToolButton>
+          <ToolButton label="Clear" onClick={clear}>
+            <Trash2 className="size-5" />
+          </ToolButton>
         </div>
-        <div className="mx-1 h-6 w-px shrink-0 bg-border" />
-        <ToolButton
-          label="Eraser"
-          active={tool === "eraser"}
-          onClick={() => setTool("eraser")}
-        >
-          <Eraser className="size-5" />
-        </ToolButton>
-        <ToolButton label="Undo" onClick={undo}>
-          <RotateCcw className="size-5" />
-        </ToolButton>
-        <ToolButton label="Clear" onClick={clear}>
-          <Trash2 className="size-5" />
-        </ToolButton>
-      </div>
+      )}
     </div>
   );
 }

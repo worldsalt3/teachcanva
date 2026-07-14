@@ -19,6 +19,43 @@ export function formatTP(points: number) {
   return `${points.toLocaleString("en-NG")} TP`;
 }
 
+export type TPLevelName = "Bronze" | "Silver" | "Gold" | "Platinum";
+
+export interface TPLevel {
+  name: TPLevelName;
+  min: number;
+  /** TP needed to reach the next level, or null when at Platinum. */
+  nextAt: number | null;
+  /** 0..1 progress from this level's floor to the next level. */
+  progress: number;
+}
+
+const TP_LEVELS: { name: TPLevelName; min: number }[] = [
+  { name: "Bronze", min: 0 },
+  { name: "Silver", min: 1000 },
+  { name: "Gold", min: 5000 },
+  { name: "Platinum", min: 15000 },
+];
+
+/** Resolve a professional's level (Bronze → Platinum) from a TP balance. */
+export function tpLevel(tp: number): TPLevel {
+  let idx = 0;
+  for (let i = TP_LEVELS.length - 1; i >= 0; i--) {
+    if (tp >= TP_LEVELS[i].min) {
+      idx = i;
+      break;
+    }
+  }
+  const level = TP_LEVELS[idx];
+  const next = TP_LEVELS[idx + 1] ?? null;
+  return {
+    name: level.name,
+    min: level.min,
+    nextAt: next ? next.min : null,
+    progress: next ? Math.min(1, (tp - level.min) / (next.min - level.min)) : 1,
+  };
+}
+
 /** Compact count, e.g. 1.2k */
 export function formatCompact(n: number) {
   return Intl.NumberFormat("en", { notation: "compact" }).format(n);
