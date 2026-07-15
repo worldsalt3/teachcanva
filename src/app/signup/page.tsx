@@ -46,6 +46,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [profession, setProfession] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [customInterest, setCustomInterest] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -56,6 +57,13 @@ export default function SignupPage() {
     setSelected((prev) =>
       prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic],
     );
+
+  const addCustomInterest = () => {
+    const topic = customInterest.trim();
+    if (!topic) return;
+    setSelected((prev) => (prev.includes(topic) ? prev : [...prev, topic]));
+    setCustomInterest("");
+  };
 
   const completeSignup = async () => {
     setError(null);
@@ -222,6 +230,41 @@ export default function SignupPage() {
                     {topic}
                   </Chip>
                 ))}
+                {selected
+                  .filter((topic) => !interests.includes(topic))
+                  .map((topic) => (
+                    <Chip
+                      key={topic}
+                      tone="light"
+                      selected
+                      onClick={() => toggle(topic)}
+                    >
+                      {topic}
+                    </Chip>
+                  ))}
+              </div>
+              <div className="mt-3 flex gap-2">
+                <Input
+                  id="custom-interest"
+                  tone="light"
+                  placeholder="Don't see it? Type your own…"
+                  value={customInterest}
+                  onChange={(e) => setCustomInterest(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addCustomInterest();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="soft"
+                  onClick={addCustomInterest}
+                  disabled={!customInterest.trim()}
+                >
+                  Add
+                </Button>
               </div>
             </div>
           )}
