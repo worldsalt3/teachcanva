@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, GraduationCap, Presentation } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,15 +37,22 @@ const ROLES: {
   },
 ];
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const roleParam = searchParams.get("role");
+  const initialRole: Role =
+    roleParam === "professional" || roleParam === "teacher"
+      ? "teacher"
+      : "student";
   const { signIn, setProfileName, setRole } = useApp();
-  const [role, setRoleChoice] = useState<Role>("student");
+  const [role, setRoleChoice] = useState<Role>(initialRole);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [profession, setProfession] = useState("");
-  const [selected, setSelected] = useState<string[]>(["Further Maths"]);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [customInterest, setCustomInterest] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -56,6 +63,13 @@ export default function SignupPage() {
     setSelected((prev) =>
       prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic],
     );
+
+  const addCustomInterest = () => {
+    const topic = customInterest.trim();
+    if (!topic) return;
+    setSelected((prev) => (prev.includes(topic) ? prev : [...prev, topic]));
+    setCustomInterest("");
+  };
 
   const completeSignup = async () => {
     setError(null);
@@ -222,6 +236,41 @@ export default function SignupPage() {
                     {topic}
                   </Chip>
                 ))}
+                {selected
+                  .filter((topic) => !interests.includes(topic))
+                  .map((topic) => (
+                    <Chip
+                      key={topic}
+                      tone="light"
+                      selected
+                      onClick={() => toggle(topic)}
+                    >
+                      {topic}
+                    </Chip>
+                  ))}
+              </div>
+              <div className="mt-3 flex gap-2">
+                <Input
+                  id="custom-interest"
+                  tone="light"
+                  placeholder="Don't see it? Type your own…"
+                  value={customInterest}
+                  onChange={(e) => setCustomInterest(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addCustomInterest();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="soft"
+                  onClick={addCustomInterest}
+                  disabled={!customInterest.trim()}
+                >
+                  Add
+                </Button>
               </div>
             </div>
           )}
@@ -275,5 +324,13 @@ export default function SignupPage() {
         <span className="underline">Terms of Service</span>
       </p>
     </main>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
   );
 }
