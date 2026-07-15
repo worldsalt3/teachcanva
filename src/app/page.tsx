@@ -25,7 +25,7 @@ export default function LandingPage() {
           cta="Start Learning"
         />
         <RoleCard
-          href="/teach/apply"
+          href="/signup"
           badge={<Badge variant="danger">Expert</Badge>}
           icon={<Presentation className="size-9 text-teal" />}
           gradient="from-[#11324a] to-[#0c1626]"

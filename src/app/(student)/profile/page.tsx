@@ -83,7 +83,7 @@ const menu: { heading: string; items: MenuItem[] }[] = [
       {
         label: "Become a professional",
         icon: Presentation,
-        href: "/teach/apply",
+        href: "/signup",
         tint: "bg-success/15 text-success-bright",
       },
     ],

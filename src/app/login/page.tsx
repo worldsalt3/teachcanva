@@ -144,7 +144,7 @@ export default function LoginPage() {
 
       <div className="mt-auto pb-8 pt-10 text-center">
         <Link
-          href="/teach/apply"
+          href="/signup"
           className="text-sm text-fg-muted hover:text-fg"
         >
           Want to teach?{" "}
