@@ -29,24 +29,24 @@ export const currentTeacher: CurrentUser = {
 
 export const topics: Topic[] = [
   { id: "all", label: "All" },
-  { id: "further-maths", label: "Further Maths" },
-  { id: "physics", label: "Physics" },
-  { id: "chemistry", label: "Chemistry" },
-  { id: "economics", label: "Economics" },
+  { id: "design", label: "Design" },
   { id: "coding", label: "Coding" },
-  { id: "english", label: "English" },
-  { id: "biology", label: "Biology" },
+  { id: "data", label: "Data" },
+  { id: "business", label: "Business" },
+  { id: "finance", label: "Finance" },
+  { id: "marketing", label: "Marketing" },
+  { id: "music", label: "Music" },
 ];
 
 export const interests: string[] = [
-  "Further Maths",
-  "Physics",
-  "Chemistry",
-  "English",
-  "Economics",
-  "Biology",
-  "Government",
-  "Literature",
+  "Product Design",
+  "Coding",
+  "Data Analysis",
+  "Digital Marketing",
+  "Business & Finance",
+  "Public Speaking",
+  "Photography",
+  "Music Production",
 ];
 
 const defaultReviews: Review[] = [
