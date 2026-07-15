@@ -86,7 +86,7 @@ export default function TeacherDashboardPage() {
           </div>
           <h2 className="mt-2 font-display text-2xl font-bold">Go Live Now</h2>
           <p className="mt-1 max-w-64 text-[14px] text-white/85">
-            Start an instant class and earn 2× Teaching Points.
+            Start an instant class and earn 2× Professional Points.
           </p>
           <Link
             href={teachLiveHref}

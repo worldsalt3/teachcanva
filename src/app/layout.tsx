@@ -18,7 +18,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "TeachCanvas — Learn live. Teach live.",
   description:
-    "Mobile-first live knowledge platform. Professionals host live cohort and 1:1 sessions on a synced teaching canvas — join, annotate, replay, and earn verified Teaching Points.",
+    "Mobile-first live knowledge platform. Professionals host live cohort and 1:1 sessions on a synced teaching canvas — join, annotate, replay, and earn verified points.",
   manifest: "/manifest.json",
   applicationName: "TeachCanvas",
   appleWebApp: {

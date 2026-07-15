@@ -14,9 +14,9 @@ export function formatNaira(amount: number, opts?: { decimals?: boolean }) {
   })}`;
 }
 
-/** Format Teaching Points (professionals), e.g. 1,240 TP */
+/** Format Professional Points (professionals), e.g. 1,240 PP */
 export function formatTP(points: number) {
-  return `${points.toLocaleString("en-NG")} TP`;
+  return `${points.toLocaleString("en-NG")} PP`;
 }
 
 /** Format Learning Points (learners), e.g. 320 LP */

@@ -113,7 +113,7 @@ export default function TeacherEarningsPage() {
               <Sparkles className="size-5" />
             </span>
             <div className="flex-1">
-              <p className="text-[13px] text-fg-muted">Teaching Points</p>
+              <p className="text-[13px] text-fg-muted">Professional Points</p>
               <p className="font-display text-xl font-bold text-fg">
                 {formatTP(wallet.tpBalance)}
               </p>
