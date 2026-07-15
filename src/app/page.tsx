@@ -16,7 +16,7 @@ export default function LandingPage() {
 
       <div className="mt-8 space-y-5">
         <RoleCard
-          href="/signup"
+          href="/signup?role=learner"
           badge={<Badge variant="info">Cohorts</Badge>}
           icon={<GraduationCap className="size-9 text-primary-soft" />}
           gradient="from-[#1f3b66] to-[#0d1b33]"
@@ -25,7 +25,7 @@ export default function LandingPage() {
           cta="Start Learning"
         />
         <RoleCard
-          href="/signup"
+          href="/signup?role=professional"
           badge={<Badge variant="danger">Expert</Badge>}
           icon={<Presentation className="size-9 text-teal" />}
           gradient="from-[#11324a] to-[#0c1626]"

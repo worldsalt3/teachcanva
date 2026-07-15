@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, GraduationCap, Presentation } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,10 +37,16 @@ const ROLES: {
   },
 ];
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const roleParam = searchParams.get("role");
+  const initialRole: Role =
+    roleParam === "professional" || roleParam === "teacher"
+      ? "teacher"
+      : "student";
   const { signIn, setProfileName, setRole } = useApp();
-  const [role, setRoleChoice] = useState<Role>("student");
+  const [role, setRoleChoice] = useState<Role>(initialRole);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -318,5 +324,13 @@ export default function SignupPage() {
         <span className="underline">Terms of Service</span>
       </p>
     </main>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
   );
 }
