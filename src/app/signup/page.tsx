@@ -60,6 +60,10 @@ export default function SignupPage() {
   const completeSignup = async () => {
     setError(null);
     setNotice(null);
+    if (role === "teacher" && !profession.trim()) {
+      setError("Please tell us your profession to sign up as a Professional.");
+      return;
+    }
     setBusy(true);
     const res = await signUpWithEmail({
       name: name.trim() || email.split("@")[0],
