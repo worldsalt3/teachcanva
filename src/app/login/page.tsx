@@ -143,10 +143,7 @@ export default function LoginPage() {
       </form>
 
       <div className="mt-auto pb-8 pt-10 text-center">
-        <Link
-          href="/signup"
-          className="text-sm text-fg-muted hover:text-fg"
-        >
+        <Link href="/signup" className="text-sm text-fg-muted hover:text-fg">
           Want to teach?{" "}
           <span className="font-semibold text-fg">Join as a Professional</span>
         </Link>
