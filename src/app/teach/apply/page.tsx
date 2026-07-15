@@ -140,13 +140,13 @@ export default function TeacherApplyPage() {
           <Field label="Create password" htmlFor="password" tone="light">
             <PasswordInput id="password" tone="light" placeholder="••••••••" />
           </Field>
-          <Field label="Subjects taught" htmlFor="subjects" tone="light">
+          <Field label="Profession" htmlFor="subjects" tone="light">
             <div className="relative">
               <Input
                 id="subjects"
                 tone="light"
                 className="pr-11"
-                placeholder="e.g. Mathematics, Physics"
+                placeholder="e.g. Product Designer, Chartered Accountant"
                 value={subjects}
                 onChange={(e) => setSubjects(e.target.value)}
               />
