@@ -43,7 +43,9 @@ export default function LoginPage() {
 
   const google = async () => {
     if (isSupabaseEnabled) {
-      const res = await signInWithGoogle("/home");
+      // No explicit destination — the callback routes by profile role, so
+      // professionals land on their dashboard instead of learner home.
+      const res = await signInWithGoogle();
       if (!res.ok) setError(res.error ?? "Google sign-in failed.");
       return;
     }
@@ -141,10 +143,7 @@ export default function LoginPage() {
       </form>
 
       <div className="mt-auto pb-8 pt-10 text-center">
-        <Link
-          href="/teach/apply"
-          className="text-sm text-fg-muted hover:text-fg"
-        >
+        <Link href="/signup" className="text-sm text-fg-muted hover:text-fg">
           Want to teach?{" "}
           <span className="font-semibold text-fg">Join as a Professional</span>
         </Link>

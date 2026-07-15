@@ -449,37 +449,6 @@ export async function applyWalletTransaction(
   if (error) console.warn("wallet_apply failed:", error.message);
 }
 
-// ─── professional applications ───────────────────────────────────────────────
-
-/**
- * Persists a professional application (teach/apply). Works pre-signup: when
- * no session exists the row is stored without a user id. Returns false when
- * Supabase is off or the insert fails, so callers can fall back gracefully.
- */
-export async function submitTeacherApplication(app: {
-  fullName: string;
-  email: string;
-  subjects: string[];
-  experience: string;
-  bio: string;
-}): Promise<boolean> {
-  const supabase = createClient();
-  if (!supabase) return false;
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { error } = await supabase.from("teacher_applications").insert({
-    user_id: user?.id ?? null,
-    full_name: app.fullName,
-    email: app.email,
-    subjects: app.subjects,
-    experience: app.experience,
-    bio: app.bio,
-  });
-  if (error) console.warn("application insert failed:", error.message);
-  return !error;
-}
-
 // ─── cohorts ─────────────────────────────────────────────────────────────────
 interface CohortRow {
   id: string;

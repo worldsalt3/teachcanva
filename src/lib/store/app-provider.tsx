@@ -68,7 +68,7 @@ const seedNotifications: AppNotification[] = [
   },
   {
     id: "n-2",
-    title: "You earned 50 TP",
+    title: "You earned 50 LP",
     body: "Quality bonus from your Advanced Calculus session.",
     time: "3h",
     kind: "tp",

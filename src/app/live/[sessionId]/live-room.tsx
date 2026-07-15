@@ -274,7 +274,7 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
         {role === "teacher" ? (
           <span className="inline-flex h-9 items-center gap-1 rounded-full bg-gold/15 px-3 text-[13px] font-bold text-gold">
             <Sparkles className="size-4" />
-            {session.tpMultiplier}× TP
+            {session.tpMultiplier}× PP
           </span>
         ) : (
           <span className="inline-flex h-9 items-center gap-1 rounded-full bg-surface-2 px-3 text-[13px] font-semibold text-fg-muted">

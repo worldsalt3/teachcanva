@@ -130,7 +130,9 @@ export default function TeacherProfilePage() {
 
         <div className="rounded-card border border-gold/25 bg-gold/10 p-4">
           <div className="flex items-center justify-between">
-            <p className="text-[13px] text-fg-muted">Teaching Points level</p>
+            <p className="text-[13px] text-fg-muted">
+              Professional Points level
+            </p>
             <span className="rounded-full bg-gold/20 px-2.5 py-1 text-[11px] font-bold text-gold">
               {level.name}
             </span>

@@ -60,6 +60,10 @@ export default function SignupPage() {
   const completeSignup = async () => {
     setError(null);
     setNotice(null);
+    if (role === "teacher" && !profession.trim()) {
+      setError("Please tell us your profession to sign up as a Professional.");
+      return;
+    }
     setBusy(true);
     const res = await signUpWithEmail({
       name: name.trim() || email.split("@")[0],
@@ -86,7 +90,9 @@ export default function SignupPage() {
 
   const google = async () => {
     if (isSupabaseEnabled) {
-      const res = await signInWithGoogle(homeHref);
+      // Pass the chosen role so the callback records it on the profile —
+      // OAuth signups can't carry metadata like email signups do.
+      const res = await signInWithGoogle(homeHref, role);
       if (!res.ok) setError(res.error ?? "Google sign-in failed.");
       return;
     }
