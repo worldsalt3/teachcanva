@@ -43,7 +43,9 @@ export default function LoginPage() {
 
   const google = async () => {
     if (isSupabaseEnabled) {
-      const res = await signInWithGoogle("/home");
+      // No explicit destination — the callback routes by profile role, so
+      // professionals land on their dashboard instead of learner home.
+      const res = await signInWithGoogle();
       if (!res.ok) setError(res.error ?? "Google sign-in failed.");
       return;
     }

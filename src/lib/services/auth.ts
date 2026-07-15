@@ -61,14 +61,26 @@ export async function signInWithEmail(
   return { ok: true };
 }
 
-export async function signInWithGoogle(next = "/home"): Promise<AuthResult> {
+/**
+ * Google OAuth sign-in. `next` forces a landing path; when omitted the
+ * callback routes by profile role. `role` records the signup intent so the
+ * callback can set it on the profile (OAuth can't carry user metadata).
+ */
+export async function signInWithGoogle(
+  next?: string,
+  role?: Role,
+): Promise<AuthResult> {
   const supabase = createClient();
   if (!supabase) return { ok: true };
 
+  const params = new URLSearchParams();
+  if (next) params.set("next", next);
+  if (role) params.set("role", role);
+  const qs = params.toString();
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+      redirectTo: `${window.location.origin}/auth/callback${qs ? `?${qs}` : ""}`,
     },
   });
   if (error) return { ok: false, error: error.message };

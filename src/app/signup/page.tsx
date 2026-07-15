@@ -86,7 +86,9 @@ export default function SignupPage() {
 
   const google = async () => {
     if (isSupabaseEnabled) {
-      const res = await signInWithGoogle(homeHref);
+      // Pass the chosen role so the callback records it on the profile —
+      // OAuth signups can't carry metadata like email signups do.
+      const res = await signInWithGoogle(homeHref, role);
       if (!res.ok) setError(res.error ?? "Google sign-in failed.");
       return;
     }
