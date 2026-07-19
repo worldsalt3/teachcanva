@@ -11,7 +11,7 @@ import {
 import { AppHeader, BackButton } from "@/components/layout/app-header";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/input";
+import { Field, Input, Textarea } from "@/components/ui/input";
 import { StarValue } from "@/components/ui/rating";
 import { BottomSheet } from "@/components/ui/sheet";
 import { useApp } from "@/lib/store/app-provider";
@@ -21,13 +21,25 @@ import type { Teacher } from "@/lib/mock";
 
 type Method = "wallet" | "card";
 
+/** "16:30" → "04:30 PM" (matches the slot-grid time labels). */
+function to12h(value: string): string {
+  const [h, m] = value.split(":").map(Number);
+  const suffix = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 || 12;
+  return `${String(hour).padStart(2, "0")}:${String(m).padStart(2, "0")} ${suffix}`;
+}
+
 export function BookingFlow({ teacher }: { teacher: Teacher }) {
   const { studentWallet, createBooking } = useApp();
   const firstAvailable = teacher.availability.findIndex((d) => d.available);
+  // No availability grid published yet → free-form date & time inputs.
+  const manual = firstAvailable === -1;
   const [dayIndex, setDayIndex] = useState(
     firstAvailable === -1 ? 0 : firstAvailable,
   );
   const [time, setTime] = useState<string | null>(null);
+  const [customDate, setCustomDate] = useState("");
+  const [customTime, setCustomTime] = useState("");
   const [topic, setTopic] = useState("");
   const [method, setMethod] = useState<Method>("wallet");
   const [confirmed, setConfirmed] = useState(false);
@@ -37,17 +49,24 @@ export function BookingFlow({ teacher }: { teacher: Teacher }) {
   const serviceFee = Math.round(teacher.hourlyRate * 0.05);
   const total = teacher.hourlyRate + serviceFee;
   const walletShort = studentWallet.balance < total;
-  const blocked = method === "wallet" && walletShort;
 
-  const canConfirm = Boolean(time) && !blocked && !processing;
+  const chosenTime = manual ? (customTime ? to12h(customTime) : null) : time;
+  const canConfirm =
+    Boolean(chosenTime) && (!manual || Boolean(customDate)) && !processing;
 
-  const summaryDate = useMemo(
-    () => (day ? `${day.label} ${day.day}` : ""),
-    [day],
-  );
+  const summaryDate = useMemo(() => {
+    if (manual) {
+      if (!customDate) return "";
+      const d = new Date(`${customDate}T00:00:00`);
+      return `${d
+        .toLocaleDateString("en-US", { weekday: "short" })
+        .toUpperCase()} ${d.getDate()}`;
+    }
+    return day ? `${day.label} ${day.day}` : "";
+  }, [manual, customDate, day]);
 
   const handleConfirm = async () => {
-    if (!time || blocked) return;
+    if (!chosenTime || (manual && !customDate)) return;
     setProcessing(true);
     try {
       if (method === "card") {
@@ -61,7 +80,7 @@ export function BookingFlow({ teacher }: { teacher: Teacher }) {
       createBooking({
         teacherId: teacher.id,
         dateLabel: summaryDate,
-        time,
+        time: chosenTime,
         topic,
         amount: total,
         payWith: method,
@@ -99,71 +118,97 @@ export function BookingFlow({ teacher }: { teacher: Teacher }) {
           </div>
         </div>
 
-        <Section title="Select date">
-          <div className="no-scrollbar -mx-5 flex gap-2.5 overflow-x-auto px-5">
-            {teacher.availability.map((d, i) => {
-              const active = i === dayIndex;
-              return (
-                <button
-                  key={d.label}
-                  type="button"
-                  disabled={!d.available}
-                  onClick={() => {
-                    setDayIndex(i);
-                    setTime(null);
-                  }}
-                  className={cn(
-                    "tap grid h-20 w-16 shrink-0 place-items-center rounded-2xl border transition-colors",
-                    active
-                      ? "border-primary bg-primary text-white shadow-lg shadow-primary/25"
-                      : d.available
-                        ? "border-border bg-surface text-fg"
-                        : "border-border/60 bg-surface/50 text-fg-faint opacity-50",
-                  )}
-                >
-                  <span className="text-[11px] font-semibold uppercase tracking-wide opacity-80">
-                    {d.label}
-                  </span>
-                  <span className="text-xl font-bold leading-none">
-                    {d.day}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </Section>
-
-        <Section title="Select time">
-          {day?.available ? (
-            <div className="grid grid-cols-3 gap-2.5">
-              {day.slots.map((slot) => {
-                const active = slot.time === time;
-                return (
-                  <button
-                    key={slot.time}
-                    type="button"
-                    disabled={!slot.available}
-                    onClick={() => setTime(slot.time)}
-                    className={cn(
-                      "tap h-11 rounded-xl border text-[13px] font-semibold transition-colors",
-                      active
-                        ? "border-primary bg-primary text-white shadow-md shadow-primary/25"
-                        : slot.available
-                          ? "border-border bg-surface text-fg hover:border-border-soft"
-                          : "border-transparent bg-surface/40 text-fg-faint line-through opacity-50",
-                    )}
-                  >
-                    {slot.time}
-                  </button>
-                );
-              })}
+        {manual ? (
+          <Section title="Pick a date & time">
+            <div className="space-y-4">
+              <Field label="Date" htmlFor="booking-date">
+                <Input
+                  id="booking-date"
+                  type="date"
+                  min={new Date().toISOString().slice(0, 10)}
+                  value={customDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                />
+              </Field>
+              <Field label="Time" htmlFor="booking-time">
+                <Input
+                  id="booking-time"
+                  type="time"
+                  value={customTime}
+                  onChange={(e) => setCustomTime(e.target.value)}
+                />
+              </Field>
             </div>
-          ) : (
-            <p className="rounded-2xl border border-dashed border-border-soft px-4 py-6 text-center text-[13px] text-fg-muted">
-              No slots available on this day.
-            </p>
-          )}
-        </Section>
+          </Section>
+        ) : (
+          <>
+            <Section title="Select date">
+              <div className="no-scrollbar -mx-5 flex gap-2.5 overflow-x-auto px-5">
+                {teacher.availability.map((d, i) => {
+                  const active = i === dayIndex;
+                  return (
+                    <button
+                      key={d.label}
+                      type="button"
+                      disabled={!d.available}
+                      onClick={() => {
+                        setDayIndex(i);
+                        setTime(null);
+                      }}
+                      className={cn(
+                        "tap grid h-20 w-16 shrink-0 place-items-center rounded-2xl border transition-colors",
+                        active
+                          ? "border-primary bg-primary text-white shadow-lg shadow-primary/25"
+                          : d.available
+                            ? "border-border bg-surface text-fg"
+                            : "border-border/60 bg-surface/50 text-fg-faint opacity-50",
+                      )}
+                    >
+                      <span className="text-[11px] font-semibold uppercase tracking-wide opacity-80">
+                        {d.label}
+                      </span>
+                      <span className="text-xl font-bold leading-none">
+                        {d.day}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Section>
+
+            <Section title="Select time">
+              {day?.available ? (
+                <div className="grid grid-cols-3 gap-2.5">
+                  {day.slots.map((slot) => {
+                    const active = slot.time === time;
+                    return (
+                      <button
+                        key={slot.time}
+                        type="button"
+                        disabled={!slot.available}
+                        onClick={() => setTime(slot.time)}
+                        className={cn(
+                          "tap h-11 rounded-xl border text-[13px] font-semibold transition-colors",
+                          active
+                            ? "border-primary bg-primary text-white shadow-md shadow-primary/25"
+                            : slot.available
+                              ? "border-border bg-surface text-fg hover:border-border-soft"
+                              : "border-transparent bg-surface/40 text-fg-faint line-through opacity-50",
+                        )}
+                      >
+                        {slot.time}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="rounded-2xl border border-dashed border-border-soft px-4 py-6 text-center text-[13px] text-fg-muted">
+                  No slots available on this day.
+                </p>
+              )}
+            </Section>
+          </>
+        )}
 
         <Section title="What would you like to cover?">
           <Textarea
@@ -221,10 +266,10 @@ export function BookingFlow({ teacher }: { teacher: Teacher }) {
           >
             {processing
               ? "Processing…"
-              : blocked
-                ? "Insufficient wallet balance"
-                : time
-                  ? `Confirm & Pay ${formatNaira(total)}`
+              : canConfirm
+                ? `Confirm & Pay ${formatNaira(total)}`
+                : manual
+                  ? "Pick a date & time to continue"
                   : "Select a time to continue"}
           </Button>
         </div>
@@ -241,7 +286,7 @@ export function BookingFlow({ teacher }: { teacher: Teacher }) {
           <p className="mt-1.5 text-[14px] text-fg-muted">
             Your session with {teacher.name} is booked for{" "}
             <span className="font-semibold text-fg">
-              {summaryDate} · {time}
+              {summaryDate} · {chosenTime}
             </span>
             .
           </p>
