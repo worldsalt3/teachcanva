@@ -76,17 +76,11 @@ body {
 }
 
 /* The marketing landing page renders full-bleed (desktop web view) instead
-   of inside the centered mobile frame, on a light lavender canvas. */
+   of inside the centered mobile frame, on a plain light canvas. */
 .app-shell:has(> .landing) {
   max-width: none;
   box-shadow: none;
-  background: linear-gradient(
-    180deg,
-    #eef0fb 0%,
-    #e7ecfa 32%,
-    #f2f4fc 70%,
-    #eef1fb 100%
-  );
+  background: #f7f8fb;
 }
 
 @utility no-scrollbar {
