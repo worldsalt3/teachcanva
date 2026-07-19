@@ -8,7 +8,7 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { TransactionRow } from "@/components/wallet/transaction-row";
 import { useApp } from "@/lib/store/app-provider";
 import { makePaymentReference } from "@/lib/services";
-import { isPaystackEnabled } from "@/lib/services/config";
+import { isMonnifyEnabled } from "@/lib/services/config";
 import { cn, formatNaira, formatTP, tpLevel } from "@/lib/utils";
 
 export default function TeacherEarningsPage() {
@@ -24,8 +24,8 @@ export default function TeacherEarningsPage() {
     setProcessing(true);
     const reference = makePaymentReference("PAYOUT");
     try {
-      if (isPaystackEnabled) {
-        // Server-side: balance check, Paystack transfer, wallet debit.
+      if (isMonnifyEnabled) {
+        // Server-side: balance check, Monnify transfer, wallet debit.
         const res = await fetch("/api/payments/withdraw", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

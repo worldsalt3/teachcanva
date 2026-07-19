@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { clientKey, rateLimit } from "@/lib/services/rate-limit";
+import {
+  getMonnifyToken,
+  isMonnifyServerConfigured,
+  monnifyBaseUrl,
+} from "@/lib/services/monnify";
 
 /**
- * Initializes a Paystack transaction (server-side, using the secret key) and
- * records a pending payment for the signed-in user. Returns the authorization
- * URL for a redirect checkout. Responds 501 when Paystack isn't configured.
+ * Initializes a Monnify transaction (server-side, bearer token) and records
+ * a pending payment for the signed-in user. Returns the hosted checkout URL
+ * for a redirect flow. Responds 501 when Monnify isn't configured.
  */
 export async function POST(request: Request) {
   if (
@@ -14,10 +19,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Too many requests." }, { status: 429 });
   }
 
-  const secret = process.env.PAYSTACK_SECRET_KEY;
-  if (!secret) {
+  if (!isMonnifyServerConfigured()) {
     return NextResponse.json(
-      { error: "Paystack is not configured." },
+      { error: "Monnify is not configured." },
       { status: 501 },
     );
   }
@@ -32,24 +36,46 @@ export async function POST(request: Request) {
     );
   }
 
-  const res = await fetch("https://api.paystack.co/transaction/initialize", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secret}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      email,
-      amount: Math.round(amount * 100), // Paystack works in kobo
-      reference:
-        typeof body?.reference === "string" ? body.reference : undefined,
-      metadata: body?.metadata ?? {},
-    }),
-  });
-  const json = await res.json();
-  if (!res.ok || !json?.status) {
+  const token = await getMonnifyToken();
+  if (!token) {
     return NextResponse.json(
-      { error: json?.message ?? "Could not initialize payment." },
+      { error: "Could not authenticate with Monnify." },
+      { status: 502 },
+    );
+  }
+
+  const reference =
+    typeof body?.reference === "string" && body.reference
+      ? body.reference
+      : `TCH-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+
+  const res = await fetch(
+    `${monnifyBaseUrl}/api/v1/merchant/transactions/init-transaction`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        amount: Math.round(amount), // Monnify works in Naira (major units)
+        customerName: typeof body?.name === "string" ? body.name : email,
+        customerEmail: email,
+        paymentReference: reference,
+        paymentDescription:
+          typeof body?.purpose === "string" ? body.purpose : "TeachCanvas",
+        currencyCode: "NGN",
+        contractCode: process.env.NEXT_PUBLIC_MONNIFY_CONTRACT_CODE,
+        redirectUrl:
+          typeof body?.redirectUrl === "string" ? body.redirectUrl : undefined,
+        metadata: body?.metadata ?? {},
+      }),
+    },
+  );
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.requestSuccessful) {
+    return NextResponse.json(
+      { error: json?.responseMessage ?? "Could not initialize payment." },
       { status: 502 },
     );
   }
@@ -63,7 +89,7 @@ export async function POST(request: Request) {
     if (user) {
       await supabase.from("payments").insert({
         owner_id: user.id,
-        reference: json.data.reference,
+        reference,
         amount: Math.round(amount),
         status: "pending",
         purpose: typeof body?.purpose === "string" ? body.purpose : null,
@@ -73,8 +99,8 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({
-    authorizationUrl: json.data.authorization_url,
-    accessCode: json.data.access_code,
-    reference: json.data.reference,
+    authorizationUrl: json.responseBody.checkoutUrl,
+    transactionReference: json.responseBody.transactionReference,
+    reference,
   });
 }
