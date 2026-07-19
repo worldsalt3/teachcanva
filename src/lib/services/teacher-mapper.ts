@@ -6,6 +6,7 @@ import type { Teacher } from "@/lib/mock/types";
 
 export interface TeacherRow {
   id: string;
+  profile_id: string | null;
   name: string;
   title: string;
   subjects: string[];
@@ -30,6 +31,7 @@ export interface TeacherRow {
 export function toTeacher(r: TeacherRow): Teacher {
   return {
     id: r.id,
+    profileId: r.profile_id ?? undefined,
     name: r.name,
     title: r.title,
     subjects: r.subjects ?? [],

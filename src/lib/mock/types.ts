@@ -27,6 +27,8 @@ export interface DaySlots {
 
 export interface Teacher {
   id: string;
+  /** Owning profile (auth user) id — set for real signed-up professionals. */
+  profileId?: string;
   name: string;
   title: string;
   subjects: string[];
