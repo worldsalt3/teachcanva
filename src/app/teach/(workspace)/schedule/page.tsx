@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CalendarPlus, CalendarX, Check, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/sheet";
@@ -12,7 +12,12 @@ import {
   ScheduledSessionCard,
 } from "@/components/session/teacher-session-card";
 import { teacherScheduled, currentTeacher } from "@/lib/mock";
+import type { DaySlots } from "@/lib/mock/types";
 import { isSupabaseEnabled } from "@/lib/services/config";
+import {
+  fetchMyTeacherListing,
+  updateMyAvailability,
+} from "@/lib/services/repository";
 import { useApp } from "@/lib/store/app-provider";
 import { cn, formatNaira } from "@/lib/utils";
 
@@ -26,6 +31,15 @@ const DAYS = [
 ];
 
 const WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** Bookable time slots offered on each day a professional marks available. */
+const DEFAULT_SLOT_TIMES = [
+  "09:00 AM",
+  "11:00 AM",
+  "01:00 PM",
+  "03:00 PM",
+  "05:00 PM",
+];
 
 const COHORT_TOPICS = ["Coding", "Data", "Fintech", "STEM", "Design", "Law"];
 const COHORT_TIMES = ["10:00 AM", "12:00 PM", "04:00 PM", "06:00 PM"];
@@ -63,6 +77,58 @@ export default function TeacherSchedulePage() {
   const [seatLimit, setSeatLimit] = useState(100);
   const [price, setPrice] = useState(5000);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Hydrate the weekly toggles from the professional's saved listing.
+  useEffect(() => {
+    if (!isSupabaseEnabled) return;
+    let cancelled = false;
+    void (async () => {
+      const listing = await fetchMyTeacherListing();
+      if (cancelled || !listing || listing.availability.length === 0) return;
+      const next: Record<string, boolean> = Object.fromEntries(
+        WEEK.map((d) => [d, false]),
+      );
+      for (const day of listing.availability) {
+        const key = WEEK.find(
+          (w) => w.toUpperCase() === day.label.toUpperCase(),
+        );
+        if (key) next[key] = day.available;
+      }
+      setAvail(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const saveAvailability = () => {
+    setAvailOpen(false);
+    if (isSupabaseEnabled) {
+      // Materialise the toggles into the rolling next-7-days slot grid the
+      // booking flow renders.
+      const week: DaySlots[] = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() + i);
+        const key = date.toLocaleDateString("en-US", { weekday: "short" });
+        const available = Boolean(avail[key]);
+        return {
+          label: key.toUpperCase(),
+          day: date.getDate(),
+          available,
+          slots: available
+            ? DEFAULT_SLOT_TIMES.map((time) => ({ time, available: true }))
+            : [],
+        };
+      });
+      const first = week.find((d) => d.available);
+      void updateMyAvailability(
+        week,
+        first ? `${first.label} · ${first.slots[0].time}` : null,
+      );
+    }
+    setToast("Availability saved");
+    setTimeout(() => setToast(null), 2600);
+  };
 
   const scheduleCohort = () => {
     createCohortSession({
@@ -242,12 +308,7 @@ export default function TeacherSchedulePage() {
             </div>
           ))}
         </div>
-        <Button
-          fullWidth
-          size="lg"
-          className="mt-5"
-          onClick={() => setAvailOpen(false)}
-        >
+        <Button fullWidth size="lg" className="mt-5" onClick={saveAvailability}>
           Save availability
         </Button>
       </BottomSheet>

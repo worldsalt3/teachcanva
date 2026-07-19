@@ -12,6 +12,7 @@
 import { createClient } from "@/lib/supabase/client";
 import type {
   CohortSession,
+  DaySlots,
   Role,
   Session,
   Teacher,
@@ -38,6 +39,41 @@ export async function fetchTeachers(): Promise<Teacher[]> {
     .order("rating", { ascending: false });
   if (error || !data) return [];
   return (data as TeacherRow[]).map(toTeacher);
+}
+
+/** The signed-in professional's own catalog listing (null if none/anon). */
+export async function fetchMyTeacherListing(): Promise<Teacher | null> {
+  const supabase = createClient();
+  if (!supabase) return null;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data, error } = await supabase
+    .from("teachers")
+    .select("*")
+    .eq("profile_id", user.id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return toTeacher(data as TeacherRow);
+}
+
+/** Persists the professional's weekly availability to their listing. */
+export async function updateMyAvailability(
+  availability: DaySlots[],
+  nextSlotLabel: string | null,
+): Promise<boolean> {
+  const supabase = createClient();
+  if (!supabase) return false;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { error } = await supabase
+    .from("teachers")
+    .update({ availability, next_slot_label: nextSlotLabel })
+    .eq("profile_id", user.id);
+  return !error;
 }
 
 // ─── bookings ────────────────────────────────────────────────────────────────

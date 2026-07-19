@@ -208,7 +208,7 @@ function SignupForm() {
 
           {role === "teacher" ? (
             <Field
-              label="What is your profession?"
+              label="State your profession"
               htmlFor="profession"
               tone="light"
             >
@@ -223,7 +223,7 @@ function SignupForm() {
           ) : (
             <div>
               <p className="mb-3 text-sm font-semibold text-ink">
-                What are you interested in learning?
+                What would you like to learn about?
               </p>
               <div className="flex flex-wrap gap-2">
                 {interests.map((topic) => (

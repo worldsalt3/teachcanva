@@ -18,6 +18,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs } from "@/components/ui/tabs";
+import { isSupabaseEnabled } from "@/lib/services/config";
+import { useApp } from "@/lib/store/app-provider";
 import { cn, formatCompact, formatNaira } from "@/lib/utils";
 import type { Review, Teacher } from "@/lib/mock";
 
@@ -338,6 +340,17 @@ function AvailabilityTab({ teacher }: { teacher: Teacher }) {
 }
 
 function BookingBar({ teacher }: { teacher: Teacher }) {
+  const { cohorts } = useApp();
+  // The professional's live room, if they're on air right now. Falls back to
+  // the seeded stub room in mock/preview mode.
+  const liveCohort = cohorts.find(
+    (c) =>
+      c.status === "live" &&
+      ((teacher.profileId && c.professionalId === teacher.profileId) ||
+        c.professionalName === teacher.name),
+  );
+  const liveId =
+    liveCohort?.id ?? (isSupabaseEnabled ? null : "live-advanced-calculus");
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center">
       <div className="pointer-events-auto flex w-full max-w-110 items-center justify-between gap-4 border-t border-border bg-canvas/90 px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
@@ -350,8 +363,8 @@ function BookingBar({ teacher }: { teacher: Teacher }) {
             {teacher.sessionLengthMins} min session
           </p>
         </div>
-        {teacher.isLive ? (
-          <Link href="/live/live-advanced-calculus?as=student">
+        {teacher.isLive && liveId ? (
+          <Link href={`/live/${liveId}?as=student`}>
             <Button size="lg" variant="success">
               Join Live Session
             </Button>
