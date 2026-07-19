@@ -2,11 +2,11 @@
  * Payment provider abstraction.
  *
  * The stub provider resolves a successful charge after a short delay so the
- * booking + wallet flows run end-to-end. A real Paystack provider can be
- * dropped in behind {@link getPaymentProvider} once a public key is set — no
- * calling code needs to change.
+ * booking + wallet flows run end-to-end. The real Monnify provider is
+ * returned by {@link getPaymentProvider} once an API key + contract code are
+ * set — no calling code needs to change.
  */
-import { integrations, isPaystackEnabled } from "./config";
+import { integrations, isMonnifyEnabled } from "./config";
 
 export interface PaymentRequest {
   /** Amount in Naira (major units). */
@@ -17,7 +17,7 @@ export interface PaymentRequest {
   metadata?: Record<string, unknown>;
   /**
    * When set, the server-side verify step credits this wallet with the
-   * Paystack-confirmed amount (never a client figure).
+   * Monnify-confirmed amount (never a client figure).
    */
   creditRole?: "student" | "teacher";
 }
@@ -62,75 +62,111 @@ class StubPaymentProvider implements PaymentProvider {
 
 let provider: PaymentProvider | null = null;
 
-// ─── Paystack Inline provider ────────────────────────────────────────────────
-interface PaystackHandler {
-  openIframe(): void;
+// ─── Monnify checkout provider ──────────────────────────────────────────────────
+interface MonnifyCompleteResponse {
+  paymentReference: string;
+  transactionReference: string;
+  amountPaid: number | string;
+  /** "PAID" | "OVERPAID" | "PARTIALLY_PAID" | "PENDING" | "FAILED" … */
+  paymentStatus: string;
+  paidOn?: string;
 }
-interface PaystackSetupOptions {
-  key: string;
-  email: string;
-  amount: number; // kobo
-  ref?: string;
+interface MonnifyInitializeOptions {
+  amount: number; // Naira (major units)
+  currency: string;
+  reference: string;
+  customerFullName: string;
+  customerEmail: string;
+  apiKey: string;
+  contractCode: string;
+  paymentDescription?: string;
   metadata?: Record<string, unknown>;
-  callback?: (response: { reference: string }) => void;
-  onClose?: () => void;
+  onComplete?: (response: MonnifyCompleteResponse) => void;
+  onClose?: (data: unknown) => void;
 }
-interface PaystackPop {
-  setup(options: PaystackSetupOptions): PaystackHandler;
+interface MonnifySdk {
+  initialize(options: MonnifyInitializeOptions): void;
 }
 
-let paystackScript: Promise<PaystackPop> | null = null;
+let monnifyScript: Promise<MonnifySdk> | null = null;
 
-function loadPaystack(): Promise<PaystackPop> {
+function loadMonnify(): Promise<MonnifySdk> {
   if (typeof window === "undefined") {
-    return Promise.reject(new Error("Paystack is browser-only."));
+    return Promise.reject(new Error("Monnify is browser-only."));
   }
-  const existing = (window as unknown as { PaystackPop?: PaystackPop })
-    .PaystackPop;
+  const existing = (window as unknown as { MonnifySDK?: MonnifySdk })
+    .MonnifySDK;
   if (existing) return Promise.resolve(existing);
 
-  paystackScript ??= new Promise<PaystackPop>((resolve, reject) => {
+  monnifyScript ??= new Promise<MonnifySdk>((resolve, reject) => {
     const script = document.createElement("script");
-    script.src = "https://js.paystack.co/v1/inline.js";
+    script.src = "https://sdk.monnify.com/plugin/monnify.js";
     script.async = true;
     script.onload = () => {
-      const pop = (window as unknown as { PaystackPop?: PaystackPop })
-        .PaystackPop;
-      if (pop) resolve(pop);
-      else reject(new Error("Paystack failed to load."));
+      const sdk = (window as unknown as { MonnifySDK?: MonnifySdk }).MonnifySDK;
+      if (sdk) resolve(sdk);
+      else reject(new Error("Monnify failed to load."));
     };
-    script.onerror = () => reject(new Error("Paystack script failed to load."));
+    script.onerror = () => reject(new Error("Monnify script failed to load."));
     document.head.appendChild(script);
   });
-  return paystackScript;
+  return monnifyScript;
 }
 
 /**
- * Real card charge via the Paystack Inline popup. Resolves to success once the
- * charge completes (and kicks off a server-side verify), or `failed` if the
- * popup is dismissed. Drop-in for the stub — no calling code changes.
+ * Real charge via the Monnify checkout modal (card, transfer, USSD). Resolves
+ * to success once the charge completes (and kicks off a server-side verify),
+ * or `failed` if the modal is dismissed. Drop-in for the stub — no calling
+ * code changes.
  */
-class PaystackProvider implements PaymentProvider {
-  readonly name = "paystack";
+class MonnifyProvider implements PaymentProvider {
+  readonly name = "monnify";
   readonly live = true;
 
-  constructor(private readonly publicKey: string) {}
+  constructor(
+    private readonly apiKey: string,
+    private readonly contractCode: string,
+  ) {}
 
   async charge(req: PaymentRequest): Promise<PaymentResult> {
     const reference = req.reference ?? makePaymentReference();
-    const pop = await loadPaystack();
+    const sdk = await loadMonnify();
 
     return new Promise<PaymentResult>((resolve) => {
-      const handler = pop.setup({
-        key: this.publicKey,
-        email: req.email,
-        amount: Math.round(req.amount * 100),
-        ref: reference,
+      let settled = false;
+      const settle = (result: PaymentResult) => {
+        if (settled) return;
+        settled = true;
+        resolve(result);
+      };
+
+      sdk.initialize({
+        amount: req.amount,
+        currency: "NGN",
+        reference,
+        customerFullName: req.label ?? "TeachCanvas user",
+        customerEmail: req.email,
+        apiKey: this.apiKey,
+        contractCode: this.contractCode,
+        paymentDescription: req.label ?? "TeachCanvas payment",
         metadata: req.metadata,
-        callback: (response) => {
-          // Confirm server-side; when creditRole is set the wallet is credited
-          // there, so wait for the verify round-trip before resolving.
-          const query = new URLSearchParams({ reference: response.reference });
+        onComplete: (response) => {
+          const paid =
+            response.paymentStatus === "PAID" ||
+            response.paymentStatus === "OVERPAID";
+          if (!paid) {
+            settle({
+              reference,
+              status: "failed",
+              amount: req.amount,
+              channel: "card",
+              paidAt: new Date().toISOString(),
+            });
+            return;
+          }
+          // Confirm server-side; when creditRole is set the wallet is
+          // credited there, so wait for the verify round-trip first.
+          const query = new URLSearchParams({ reference });
           if (req.creditRole) query.set("credit", req.creditRole);
           void (async () => {
             try {
@@ -138,17 +174,17 @@ class PaystackProvider implements PaymentProvider {
             } catch {
               // Verified lazily on next load; charge itself succeeded.
             }
-            resolve({
-              reference: response.reference,
+            settle({
+              reference,
               status: "success",
               amount: req.amount,
               channel: "card",
-              paidAt: new Date().toISOString(),
+              paidAt: response.paidOn ?? new Date().toISOString(),
             });
           })();
         },
         onClose: () => {
-          resolve({
+          settle({
             reference,
             status: "failed",
             amount: req.amount,
@@ -157,15 +193,17 @@ class PaystackProvider implements PaymentProvider {
           });
         },
       });
-      handler.openIframe();
     });
   }
 }
 
 export function getPaymentProvider(): PaymentProvider {
   if (provider) return provider;
-  if (isPaystackEnabled) {
-    provider = new PaystackProvider(integrations.paystack.publicKey);
+  if (isMonnifyEnabled) {
+    provider = new MonnifyProvider(
+      integrations.monnify.apiKey,
+      integrations.monnify.contractCode,
+    );
   }
   provider ??= new StubPaymentProvider();
   return provider;

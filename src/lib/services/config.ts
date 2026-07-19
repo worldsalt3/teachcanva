@@ -15,9 +15,10 @@ export const integrations = {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
     anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
   },
-  /** Paystack — card payments, wallet top-ups and payouts (₦). */
-  paystack: {
-    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ?? "",
+  /** Monnify — card/transfer payments, wallet top-ups and payouts (₦). */
+  monnify: {
+    apiKey: process.env.NEXT_PUBLIC_MONNIFY_API_KEY ?? "",
+    contractCode: process.env.NEXT_PUBLIC_MONNIFY_CONTRACT_CODE ?? "",
   },
   /** Realtime video for the live session room. */
   video: {
@@ -31,7 +32,9 @@ export const isSupabaseEnabled = Boolean(
   integrations.supabase.url && integrations.supabase.anonKey,
 );
 
-export const isPaystackEnabled = Boolean(integrations.paystack.publicKey);
+export const isMonnifyEnabled = Boolean(
+  integrations.monnify.apiKey && integrations.monnify.contractCode,
+);
 
 export const isRealVideoEnabled =
   integrations.video.provider !== "stub" && Boolean(integrations.video.url);

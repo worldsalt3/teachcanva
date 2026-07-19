@@ -35,7 +35,7 @@ import type {
   EnrolResult,
   Slide,
 } from "@/lib/services/types";
-import { isPaystackEnabled, isSupabaseEnabled } from "@/lib/services/config";
+import { isMonnifyEnabled, isSupabaseEnabled } from "@/lib/services/config";
 import { getSessionUser, signOutBackend } from "@/lib/services/auth";
 import {
   applyWalletTransaction,
@@ -675,9 +675,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           },
         };
       });
-      // With Paystack live, /api/payments/verify credits the wallet
+      // With Monnify live, /api/payments/verify credits the wallet
       // server-side with the confirmed amount — skip the client write.
-      if (isSupabaseEnabled && !isPaystackEnabled) {
+      if (isSupabaseEnabled && !isMonnifyEnabled) {
         void applyWalletTransaction(role, {
           title: "Wallet Top-up — Card",
           subtitle: `${ledgerDate()} • Ref: ${reference}`,
@@ -713,9 +713,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           },
         };
       });
-      // With Paystack live, /api/payments/withdraw debits the wallet
+      // With Monnify live, /api/payments/withdraw debits the wallet
       // server-side after its own balance check — skip the client write.
-      if (isSupabaseEnabled && !isPaystackEnabled) {
+      if (isSupabaseEnabled && !isMonnifyEnabled) {
         void applyWalletTransaction(role, {
           title: "Bank Withdrawal",
           subtitle: `${ledgerDate()} • Ref: ${reference}`,

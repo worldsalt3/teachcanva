@@ -2,17 +2,22 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { clientKey, rateLimit } from "@/lib/services/rate-limit";
+import {
+  getMonnifyToken,
+  isMonnifyServerConfigured,
+  monnifyBaseUrl,
+} from "@/lib/services/monnify";
 
 /**
- * Verifies a Paystack transaction by reference (server-side, secret key) and
- * records the outcome via the service-role client.
+ * Verifies a Monnify transaction by payment reference (server-side, bearer
+ * token) and records the outcome via the service-role client.
  *
  * When `?credit=student|teacher` is passed and the charge is genuinely
  * successful, the signed-in user's wallet is credited here — with the amount
- * Paystack reports, never a client-supplied figure. Crediting is idempotent
+ * Monnify reports, never a client-supplied figure. Crediting is idempotent
  * per reference.
  *
- * Responds 501 when Paystack isn't configured.
+ * Responds 501 when Monnify isn't configured.
  */
 export async function GET(request: Request) {
   if (
@@ -21,10 +26,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Too many requests." }, { status: 429 });
   }
 
-  const secret = process.env.PAYSTACK_SECRET_KEY;
-  if (!secret) {
+  if (!isMonnifyServerConfigured()) {
     return NextResponse.json(
-      { error: "Paystack is not configured." },
+      { error: "Monnify is not configured." },
       { status: 501 },
     );
   }
@@ -45,20 +49,33 @@ export async function GET(request: Request) {
     );
   }
 
-  const res = await fetch(
-    `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
-    { headers: { Authorization: `Bearer ${secret}` } },
-  );
-  const json = await res.json();
-  if (!res.ok || !json?.status) {
+  const token = await getMonnifyToken();
+  if (!token) {
     return NextResponse.json(
-      { error: json?.message ?? "Could not verify payment." },
+      { error: "Could not authenticate with Monnify." },
       { status: 502 },
     );
   }
 
-  const paid = json.data?.status === "success";
-  const amountNaira = Math.round(json.data?.amount ?? 0) / 100;
+  const res = await fetch(
+    `${monnifyBaseUrl}/api/v1/merchant/transactions/query?paymentReference=${encodeURIComponent(reference)}`,
+    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
+  );
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.requestSuccessful) {
+    return NextResponse.json(
+      { error: json?.responseMessage ?? "Could not verify payment." },
+      { status: 502 },
+    );
+  }
+
+  const tx = json.responseBody ?? {};
+  const paid = tx.paymentStatus === "PAID" || tx.paymentStatus === "OVERPAID";
+  const amountNaira = Math.round(Number(tx.amountPaid ?? 0));
+  const channel =
+    typeof tx.paymentMethod === "string"
+      ? tx.paymentMethod.toLowerCase().replace(/_/g, "-")
+      : null;
   let credited = false;
 
   const admin = createAdminClient();
@@ -83,7 +100,7 @@ export async function GET(request: Request) {
         .from("payments")
         .update({
           status: paid ? "success" : "failed",
-          channel: json.data?.channel ?? null,
+          channel,
           paid_at: paid ? new Date().toISOString() : null,
         })
         .eq("reference", reference);
@@ -93,9 +110,12 @@ export async function GET(request: Request) {
         reference,
         amount: amountNaira,
         status: paid ? "success" : "failed",
-        channel: json.data?.channel ?? null,
+        channel,
         purpose: credit ? `wallet-topup-${credit}` : "charge",
-        metadata: { verifiedVia: "api" },
+        metadata: {
+          verifiedVia: "api",
+          transactionReference: tx.transactionReference ?? null,
+        },
         paid_at: paid ? new Date().toISOString() : null,
       });
     }
@@ -121,7 +141,7 @@ export async function GET(request: Request) {
         await admin.from("wallet_transactions").insert({
           wallet_id: wallet.id,
           title: "Wallet Top-up — Card",
-          subtitle: `Verified by Paystack • Ref: ${reference}`,
+          subtitle: `Verified by Monnify • Ref: ${reference}`,
           amount: amountNaira,
           direction: "in",
           status: "completed",
@@ -136,8 +156,8 @@ export async function GET(request: Request) {
     reference,
     status: paid ? "success" : "failed",
     amount: amountNaira,
-    channel: json.data?.channel ?? "card",
-    paidAt: json.data?.paid_at ?? new Date().toISOString(),
+    channel: channel ?? "card",
+    paidAt: tx.paidOn ?? new Date().toISOString(),
     credited,
   });
 }

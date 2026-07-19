@@ -2,17 +2,22 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { clientKey, rateLimit } from "@/lib/services/rate-limit";
+import {
+  getMonnifyToken,
+  isMonnifyServerConfigured,
+  monnifyBaseUrl,
+} from "@/lib/services/monnify";
 
 /**
  * Initiates a bank payout from the signed-in professional's wallet.
  *
  * The balance check and debit happen server-side with the service-role
- * client; the transfer itself goes through Paystack (recipient + transfer).
- * When Paystack declines the transfer (common on test/starter accounts) the
- * payout is still recorded as pending for manual processing, so the ledger
- * stays consistent.
+ * client; the transfer itself goes through Monnify's single disbursement
+ * API. When Monnify declines the transfer (common on sandbox/unfunded
+ * wallets) the payout is still recorded as pending for manual processing,
+ * so the ledger stays consistent.
  *
- * Responds 501 when Paystack isn't configured, 401 without a session.
+ * Responds 501 when Monnify isn't configured, 401 without a session.
  */
 export async function POST(request: Request) {
   if (
@@ -21,10 +26,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Too many requests." }, { status: 429 });
   }
 
-  const secret = process.env.PAYSTACK_SECRET_KEY;
-  if (!secret) {
+  if (!isMonnifyServerConfigured()) {
     return NextResponse.json(
-      { error: "Paystack is not configured." },
+      { error: "Monnify is not configured." },
       { status: 501 },
     );
   }
@@ -55,10 +59,11 @@ export async function POST(request: Request) {
     );
   }
 
-  // Bank details — default to Paystack's test bank so the demo flow works
-  // without a bank-details form; real deployments pass these from settings.
-  const bankCode = String(body?.bankCode ?? "057");
-  const accountNumber = String(body?.accountNumber ?? "0000000000");
+  // Bank details — default to Monnify's sandbox test bank so the demo flow
+  // works without a bank-details form; real deployments pass these from
+  // settings.
+  const bankCode = String(body?.bankCode ?? "035");
+  const accountNumber = String(body?.accountNumber ?? "2085886393");
   const accountName = String(body?.accountName ?? "TeachCanvas Professional");
 
   // Server-side balance check + debit target.
@@ -78,54 +83,50 @@ export async function POST(request: Request) {
     );
   }
 
-  // Attempt the real transfer via Paystack.
+  // Attempt the real transfer via Monnify's single disbursement API.
   let transferStatus: "sent" | "pending" = "pending";
   let note = "Queued for processing";
   try {
-    const recipientRes = await fetch(
-      "https://api.paystack.co/transferrecipient",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${secret}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          type: "nuban",
-          name: accountName,
-          account_number: accountNumber,
-          bank_code: bankCode,
-          currency: "NGN",
-        }),
-      },
-    );
-    const recipient = await recipientRes.json();
-    const recipientCode = recipient?.data?.recipient_code;
+    const token = await getMonnifyToken();
+    const sourceAccount = process.env.MONNIFY_WALLET_ACCOUNT_NUMBER;
 
-    if (recipientRes.ok && recipientCode) {
-      const transferRes = await fetch("https://api.paystack.co/transfer", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${secret}`,
-          "Content-Type": "application/json",
+    if (token && sourceAccount) {
+      const transferRes = await fetch(
+        `${monnifyBaseUrl}/api/v2/disbursements/single`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            amount,
+            reference,
+            narration: "TeachCanvas earnings payout",
+            destinationBankCode: bankCode,
+            destinationAccountNumber: accountNumber,
+            destinationAccountName: accountName,
+            currency: "NGN",
+            sourceAccountNumber: sourceAccount,
+          }),
         },
-        body: JSON.stringify({
-          source: "balance",
-          amount: amount * 100, // kobo
-          recipient: recipientCode,
-          reference,
-          reason: "TeachCanvas earnings payout",
-        }),
-      });
-      const transfer = await transferRes.json();
-      if (transferRes.ok && transfer?.status) {
+      );
+      const transfer = await transferRes.json().catch(() => null);
+      const status = transfer?.responseBody?.status;
+      if (
+        transferRes.ok &&
+        transfer?.requestSuccessful &&
+        (status === "SUCCESS" || status === "PENDING")
+      ) {
         transferStatus = "sent";
         note = "Transfer initiated";
+      } else if (status === "PENDING_AUTHORIZATION") {
+        note = "Awaiting transfer authorization";
       } else {
-        note = transfer?.message ?? note;
+        note = transfer?.responseMessage ?? note;
       }
-    } else {
-      note = recipient?.message ?? note;
+    } else if (!sourceAccount) {
+      note = "Payout wallet not configured";
     }
   } catch {
     // Network failure — fall through to the pending/manual path.
