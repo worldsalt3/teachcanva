@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FastForward, Pause, Play, Presentation, Rewind } from "lucide-react";
+import {
+  FastForward,
+  Pause,
+  Play,
+  Presentation,
+  Rewind,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 import { AppHeader, BackButton } from "@/components/layout/app-header";
 import { MediaThumb } from "@/components/ui/media";
 import { useApp } from "@/lib/store/app-provider";
@@ -18,12 +26,275 @@ import type { Session } from "@/lib/mock";
 import { cn } from "@/lib/utils";
 
 const SPEEDS = [1, 1.5, 2] as const;
+const MAX_ZOOM = 4;
 
 function fmt(sec: number): string {
   const s = Math.max(0, Math.floor(sec));
   const m = Math.floor(s / 60);
   const r = s % 60;
   return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+}
+
+interface StageView {
+  scale: number;
+  x: number;
+  y: number;
+}
+
+/**
+ * Gesture surface for the replay: pinch or double-tap to zoom into a slide,
+ * drag to pan while zoomed, single tap to play/pause. Zoom buttons cover
+ * mouse users. All content renders inside the transformed layer.
+ */
+function ZoomStage({
+  playing,
+  onTogglePlay,
+  children,
+}: {
+  playing: boolean;
+  onTogglePlay: () => void;
+  children: React.ReactNode;
+}) {
+  const [view, setView] = useState<StageView>({ scale: 1, x: 0, y: 0 });
+  const [smooth, setSmooth] = useState(true);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const gesture = useRef({
+    startDist: 0,
+    startScale: 1,
+    startMid: { x: 0, y: 0 },
+    startOffset: { x: 0, y: 0 },
+    startPoint: { x: 0, y: 0 },
+    moved: false,
+    lastTap: 0,
+  });
+  const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clamp = (v: StageView): StageView => {
+    const rect = stageRef.current?.getBoundingClientRect();
+    if (!rect) return v;
+    const maxX = ((v.scale - 1) * rect.width) / 2;
+    const maxY = ((v.scale - 1) * rect.height) / 2;
+    return {
+      scale: v.scale,
+      x: Math.min(maxX, Math.max(-maxX, v.x)),
+      y: Math.min(maxY, Math.max(-maxY, v.y)),
+    };
+  };
+
+  /** Zooms by `factor` keeping the stage-centre-relative `focal` point put. */
+  const zoomBy = (factor: number, focal = { x: 0, y: 0 }) => {
+    setSmooth(true);
+    setView((v) => {
+      const scale = Math.min(MAX_ZOOM, Math.max(1, v.scale * factor));
+      const ratio = scale / v.scale;
+      return clamp({
+        scale,
+        x: focal.x - (focal.x - v.x) * ratio,
+        y: focal.y - (focal.y - v.y) * ratio,
+      });
+    });
+  };
+
+  const centreOf = (rect: DOMRect, cx: number, cy: number) => ({
+    x: cx - rect.left - rect.width / 2,
+    y: cy - rect.top - rect.height / 2,
+  });
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = stageRef.current;
+    if (!el) return;
+    el.setPointerCapture(e.pointerId);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const g = gesture.current;
+    const pts = [...pointers.current.values()];
+    if (pts.length === 2) {
+      // Pinch begins: freeze the baseline and cancel any pending tap.
+      const rect = el.getBoundingClientRect();
+      g.startDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      g.startScale = view.scale;
+      g.startMid = centreOf(
+        rect,
+        (pts[0].x + pts[1].x) / 2,
+        (pts[0].y + pts[1].y) / 2,
+      );
+      g.startOffset = { x: view.x, y: view.y };
+      g.moved = true;
+      if (tapTimer.current) {
+        clearTimeout(tapTimer.current);
+        tapTimer.current = null;
+      }
+    } else {
+      g.startPoint = { x: e.clientX, y: e.clientY };
+      g.startOffset = { x: view.x, y: view.y };
+      g.moved = false;
+    }
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pointers.current.has(e.pointerId)) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const el = stageRef.current;
+    if (!el) return;
+    const g = gesture.current;
+    const pts = [...pointers.current.values()];
+
+    if (pts.length === 2) {
+      const rect = el.getBoundingClientRect();
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const mid = centreOf(
+        rect,
+        (pts[0].x + pts[1].x) / 2,
+        (pts[0].y + pts[1].y) / 2,
+      );
+      const scale = Math.min(
+        MAX_ZOOM,
+        Math.max(1, (g.startScale * dist) / Math.max(1, g.startDist)),
+      );
+      const ratio = scale / g.startScale;
+      setSmooth(false);
+      setView(() =>
+        clamp({
+          scale,
+          x: mid.x - (g.startMid.x - g.startOffset.x) * ratio,
+          y: mid.y - (g.startMid.y - g.startOffset.y) * ratio,
+        }),
+      );
+      return;
+    }
+
+    const dx = e.clientX - g.startPoint.x;
+    const dy = e.clientY - g.startPoint.y;
+    if (Math.hypot(dx, dy) > 6) g.moved = true;
+    if (view.scale > 1 && g.moved) {
+      setSmooth(false);
+      setView((v) =>
+        clamp({
+          scale: v.scale,
+          x: g.startOffset.x + dx,
+          y: g.startOffset.y + dy,
+        }),
+      );
+    }
+  };
+
+  const onPointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pointers.current.has(e.pointerId)) return;
+    pointers.current.delete(e.pointerId);
+    const g = gesture.current;
+    const remaining = [...pointers.current.values()];
+    if (remaining.length > 0) {
+      // Pinch ended with one finger down — re-anchor it as a fresh drag.
+      g.startPoint = { x: remaining[0].x, y: remaining[0].y };
+      g.startOffset = { x: view.x, y: view.y };
+      return;
+    }
+    if (g.moved) return;
+
+    const now = Date.now();
+    if (now - g.lastTap < 300) {
+      // Double tap: zoom into the tapped point, or reset when zoomed.
+      g.lastTap = 0;
+      if (tapTimer.current) {
+        clearTimeout(tapTimer.current);
+        tapTimer.current = null;
+      }
+      setSmooth(true);
+      if (view.scale > 1) {
+        setView({ scale: 1, x: 0, y: 0 });
+      } else {
+        const rect = stageRef.current?.getBoundingClientRect();
+        const focal = rect
+          ? centreOf(rect, e.clientX, e.clientY)
+          : { x: 0, y: 0 };
+        setView(clamp({ scale: 2.5, x: focal.x * -1.5, y: focal.y * -1.5 }));
+      }
+      return;
+    }
+    g.lastTap = now;
+    tapTimer.current = setTimeout(() => {
+      tapTimer.current = null;
+      onTogglePlay();
+    }, 300);
+  };
+
+  return (
+    <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black">
+      {/* Pointer-gesture layer: pinch/drag/tap. Keyboard play/pause lives in
+          the transport row below, so this stays a non-focusable surface. */}
+      <div
+        ref={stageRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerEnd}
+        onPointerCancel={onPointerEnd}
+        className="absolute inset-0 h-full w-full cursor-pointer touch-none select-none"
+      >
+        <div
+          className={cn(
+            "absolute inset-0",
+            smooth && "transition-transform duration-200",
+          )}
+          style={{
+            transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
+          }}
+        >
+          {children}
+        </div>
+      </div>
+
+      <span className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
+        <span className="size-1.5 rounded-full bg-danger" />
+        Rec
+      </span>
+
+      <div className="absolute right-3 top-3 flex items-center gap-1.5">
+        {view.scale > 1 && (
+          <button
+            type="button"
+            onClick={() => {
+              setSmooth(true);
+              setView({ scale: 1, x: 0, y: 0 });
+            }}
+            className="tap rounded-full bg-black/50 px-2.5 py-1.5 text-[11px] font-bold text-white backdrop-blur-sm"
+          >
+            {Math.round(view.scale * 10) / 10}× · Reset
+          </button>
+        )}
+        <button
+          type="button"
+          aria-label="Zoom out"
+          onClick={() => zoomBy(1 / 1.5)}
+          className="tap grid size-8 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm"
+        >
+          <ZoomOut className="size-4" />
+        </button>
+        <button
+          type="button"
+          aria-label="Zoom in"
+          onClick={() => zoomBy(1.5)}
+          className="tap grid size-8 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm"
+        >
+          <ZoomIn className="size-4" />
+        </button>
+      </div>
+
+      <span className="pointer-events-none absolute inset-0 grid place-items-center">
+        <span
+          className={cn(
+            "grid size-16 place-items-center rounded-full bg-white/15 text-white shadow-xl backdrop-blur-md transition-opacity",
+            playing && view.scale > 1 && "opacity-0",
+          )}
+        >
+          {playing ? (
+            <Pause className="size-7" />
+          ) : (
+            <Play className="size-7 translate-x-0.5" />
+          )}
+        </span>
+      </span>
+    </div>
+  );
 }
 
 export function RecordingPlayer({ sessionId }: { sessionId: string }) {
@@ -130,8 +401,8 @@ export function RecordingPlayer({ sessionId }: { sessionId: string }) {
       </AppHeader>
 
       <div className="space-y-5 px-5 py-4">
-        {/* Video surface */}
-        <div className="relative aspect-video w-full overflow-hidden rounded-2xl">
+        {/* Video surface — pinch/double-tap to zoom, tap to play/pause */}
+        <ZoomStage playing={playing} onTogglePlay={togglePlay}>
           <MediaThumb
             seed={sessionId}
             icon={false}
@@ -153,46 +424,26 @@ export function RecordingPlayer({ sessionId }: { sessionId: string }) {
               )}
             </>
           ) : activeSlide ? (
-            <div className="absolute inset-0 grid place-items-center p-6 text-center">
-              <div>
-                <p className="text-[12px] font-semibold uppercase tracking-wide text-white/60">
+            <span className="absolute inset-0 grid place-items-center p-6 text-center">
+              <span className="block">
+                <span className="block text-[12px] font-semibold uppercase tracking-wide text-white/60">
                   {activeSlide.title || `Slide ${chapterIndex + 1}`}
-                </p>
-                <p className="mt-2 font-display text-xl font-bold text-white">
+                </span>
+                <span className="mt-2 block font-display text-xl font-bold text-white">
                   {activeSlide.kind === "video"
                     ? "Video clip"
                     : activeSlide.body || "—"}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="absolute inset-0 grid place-items-center p-6 text-center">
-              <p className="font-display text-lg font-bold text-white/90">
-                {session?.topic ?? "Session recording"}
-              </p>
-            </div>
-          )}
-
-          <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
-            <span className="size-1.5 rounded-full bg-danger" />
-            Rec
-          </span>
-
-          <button
-            type="button"
-            aria-label={playing ? "Pause" : "Play"}
-            onClick={togglePlay}
-            className="absolute inset-0 grid place-items-center"
-          >
-            <span className="grid size-16 place-items-center rounded-full bg-white/15 text-white shadow-xl backdrop-blur-md transition-transform active:scale-95">
-              {playing ? (
-                <Pause className="size-7" />
-              ) : (
-                <Play className="size-7 translate-x-0.5" />
-              )}
+                </span>
+              </span>
             </span>
-          </button>
-        </div>
+          ) : (
+            <span className="absolute inset-0 grid place-items-center p-6 text-center">
+              <span className="font-display text-lg font-bold text-white/90">
+                {session?.topic ?? "Session recording"}
+              </span>
+            </span>
+          )}
+        </ZoomStage>
 
         {/* Scrubber */}
         <div>
