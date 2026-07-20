@@ -56,6 +56,23 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* iOS Safari renders native date/time inputs with its own intrinsic sizing:
+   the value centres oddly, and an empty field collapses to a tall blank box.
+   Normalise them so they match our text inputs. */
+input[type="date"],
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  height: 3.25rem; /* h-13, matches Input */
+}
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+}
+
 /* Centered mobile app frame */
 .app-shell {
   position: relative;

@@ -127,21 +127,35 @@ export function BookingFlow({ teacher }: { teacher: Teacher }) {
           <Section title="Pick a date & time">
             <div className="space-y-4">
               <Field label="Date" htmlFor="booking-date">
-                <Input
-                  id="booking-date"
-                  type="date"
-                  min={new Date().toISOString().slice(0, 10)}
-                  value={customDate}
-                  onChange={(e) => setCustomDate(e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    id="booking-date"
+                    type="date"
+                    min={new Date().toISOString().slice(0, 10)}
+                    value={customDate}
+                    onChange={(e) => setCustomDate(e.target.value)}
+                  />
+                  {!customDate && (
+                    <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-[15px] text-fg-faint">
+                      Pick a date
+                    </span>
+                  )}
+                </div>
               </Field>
               <Field label="Time" htmlFor="booking-time">
-                <Input
-                  id="booking-time"
-                  type="time"
-                  value={customTime}
-                  onChange={(e) => setCustomTime(e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    id="booking-time"
+                    type="time"
+                    value={customTime}
+                    onChange={(e) => setCustomTime(e.target.value)}
+                  />
+                  {!customTime && (
+                    <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-[15px] text-fg-faint">
+                      Pick a time
+                    </span>
+                  )}
+                </div>
               </Field>
             </div>
           </Section>

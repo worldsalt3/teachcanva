@@ -5,11 +5,7 @@ import { Bell, Plus } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { SearchTrigger } from "@/components/ui/search-bar";
 import { SectionHeader } from "@/components/ui/section-header";
-import {
-  Skeleton,
-  SkeletonCard,
-  SkeletonRail,
-} from "@/components/ui/skeleton";
+import { Skeleton, SkeletonCard, SkeletonRail } from "@/components/ui/skeleton";
 import { LiveNowCard } from "@/components/session/live-now-card";
 import {
   RecentSessionCard,
