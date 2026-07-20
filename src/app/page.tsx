@@ -29,7 +29,7 @@ function Brand({ small }: { small?: boolean }) {
         </svg>
       </span>
       <span
-        className={`font-display font-bold tracking-tight text-ink ${small ? "text-lg" : "text-xl"}`}
+        className={`font-display font-bold tracking-tight text-ink ${small ? "text-lg" : "text-lg sm:text-xl"}`}
       >
         TeachCanvas
       </span>
@@ -42,8 +42,8 @@ export default function LandingPage() {
     <main className="landing relative flex min-h-dvh flex-col text-ink">
       {/* ── Top bar ── */}
       <header className="border-b border-ink/8 pt-[env(safe-area-inset-top)]">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4 lg:px-8">
-          <Link href="/" className="tap">
+        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
+          <Link href="/" className="tap shrink-0">
             <Brand />
           </Link>
           <nav className="hidden items-center gap-6 text-[14px] font-medium text-ink-soft md:flex">
@@ -63,16 +63,16 @@ export default function LandingPage() {
               For professionals
             </a>
           </nav>
-          <div className="flex items-center gap-5">
+          <div className="flex shrink-0 items-center gap-3 sm:gap-5">
             <Link
               href="/login"
-              className="tap text-[14px] font-medium text-ink-soft transition-colors hover:text-ink"
+              className="tap whitespace-nowrap text-[14px] font-medium text-ink-soft transition-colors hover:text-ink"
             >
               Log in
             </Link>
             <Link
               href="/signup?role=learner"
-              className="tap rounded-lg bg-ink px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#22304f]"
+              className="tap whitespace-nowrap rounded-lg bg-ink px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#22304f] sm:px-4"
             >
               Create account
             </Link>
