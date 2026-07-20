@@ -47,7 +47,7 @@ cp .env.example .env.local
    npx supabase link --project-ref <your-project-ref>
    npx supabase db push
    ```
-   *(No CLI? Paste each file in [supabase/migrations](supabase/migrations) into the dashboard SQL Editor, in order 0001 → 0008.)*
+   _(No CLI? Paste each file in [supabase/migrations](supabase/migrations) into the dashboard SQL Editor, in order 0001 → 0008.)_
 4. **Important for demos:** disable email confirmation so sign-ups are instant — Dashboard → Authentication → Sign In / Up → Email → turn off **Confirm email**.
 5. Restart `npm run dev`. The app now gates behind real auth — sign up to continue.
 
@@ -81,16 +81,16 @@ Without these, the live room uses a polished stub (canvas, slides, and chat stil
 
 Use two browser profiles (or a normal + private window) side by side.
 
-| Step | Who | What to do |
-|------|-----|------------|
-| 1 | Professional | Sign up → pick **Professional**. A public listing is auto-created — you're instantly discoverable on Explore. |
-| 2 | Professional | Schedule → **Availability** → toggle days → save. Optionally **New cohort** to open a seat-limited group session. |
-| 3 | Learner | Sign up → pick **Cohort Member** → Wallet → **Top up** with a Monnify sandbox card. |
-| 4 | Learner | Explore → open the professional → **Book a Session** → pick a slot → pay from wallet (held in escrow). |
-| 5 | Professional | Watch the schedule update **in realtime** — no reload — with a "New session booked" notification. |
-| 6 | Both | **Join** the session from either side → same live room: draw on the shared canvas (syncs live), chat, present slides. |
-| 7 | Professional | End the session → completion screen → **escrow is released** to the earnings wallet automatically. |
-| 8 | Professional | Teach → Earnings → see the credited session → **Withdraw** (Monnify sandbox disbursement). |
+| Step | Who          | What to do                                                                                                            |
+| ---- | ------------ | --------------------------------------------------------------------------------------------------------------------- |
+| 1    | Professional | Sign up → pick **Professional**. A public listing is auto-created — you're instantly discoverable on Explore.         |
+| 2    | Professional | Schedule → **Availability** → toggle days → save. Optionally **New cohort** to open a seat-limited group session.     |
+| 3    | Learner      | Sign up → pick **Cohort Member** → Wallet → **Top up** with a Monnify sandbox card.                                   |
+| 4    | Learner      | Explore → open the professional → **Book a Session** → pick a slot → pay from wallet (held in escrow).                |
+| 5    | Professional | Watch the schedule update **in realtime** — no reload — with a "New session booked" notification.                     |
+| 6    | Both         | **Join** the session from either side → same live room: draw on the shared canvas (syncs live), chat, present slides. |
+| 7    | Professional | End the session → completion screen → **escrow is released** to the earnings wallet automatically.                    |
+| 8    | Professional | Teach → Earnings → see the credited session → **Withdraw** (Monnify sandbox disbursement).                            |
 
 Also worth showing: booking cancellation with automatic refund, cohort enrolment with waitlisting when seats run out, insufficient-balance guard with top-up prompt, the "Prepare class" slide builder, and installing the app as a PWA.
 
@@ -98,12 +98,12 @@ Also worth showing: booking cancellation with automatic refund, cohort enrolment
 
 ## Scripts
 
-| Command | What it does |
-|---------|--------------|
-| `npm run dev` | Dev server at localhost:3000 (Turbopack) |
-| `npm run build` | Production build + TypeScript check |
-| `npm run lint` | ESLint |
-| `npm start` | Serve the production build |
+| Command         | What it does                             |
+| --------------- | ---------------------------------------- |
+| `npm run dev`   | Dev server at localhost:3000 (Turbopack) |
+| `npm run build` | Production build + TypeScript check      |
+| `npm run lint`  | ESLint                                   |
+| `npm start`     | Serve the production build               |
 
 ## Project structure
 
@@ -138,4 +138,3 @@ supabase/migrations/    Schema: profiles, teachers, bookings, cohorts, wallets, 
 - **`npm run build` conflicts with the dev server** — stop `npm run dev` first (both hold `.next`).
 - **Sign-up stuck at "check your email"** — disable Confirm email in Supabase (Full setup, step 4).
 - **Port 3000 busy** — `lsof -nP -iTCP:3000 -sTCP:LISTEN` to find the process.
-
