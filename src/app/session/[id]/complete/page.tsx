@@ -25,7 +25,7 @@ const CONFETTI_COLORS = [
 
 export default function SessionCompletePage() {
   const { id } = useParams<{ id: string }>();
-  const { cohorts, studentBookings, endCohort } = useApp();
+  const { cohorts, studentBookings, endCohort, role } = useApp();
 
   // Settle the session server-side: 1:1 bookings are marked completed and
   // cohorts ended (owner only), releasing escrow to the professional either
@@ -179,14 +179,14 @@ export default function SessionCompletePage() {
         </div>
 
         <div className="mt-7 space-y-2.5">
-          {session.teacherId ? (
+          {role !== "teacher" && session.teacherId ? (
             <Link href={`/book/${session.teacherId}`}>
               <Button fullWidth size="lg">
                 Book Next Session
               </Button>
             </Link>
           ) : null}
-          <Link href="/home">
+          <Link href={role === "teacher" ? "/teach/dashboard" : "/home"}>
             <Button fullWidth size="lg" variant="neutral">
               Back to Home
             </Button>
