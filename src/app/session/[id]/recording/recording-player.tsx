@@ -6,6 +6,8 @@ import { AppHeader, BackButton } from "@/components/layout/app-header";
 import { MediaThumb } from "@/components/ui/media";
 import { useApp } from "@/lib/store/app-provider";
 import { isSupabaseEnabled } from "@/lib/services/config";
+import { fetchSlides } from "@/lib/services/repository";
+import type { Slide } from "@/lib/services/types";
 import {
   studentPast,
   studentUpcoming,
@@ -25,12 +27,13 @@ function fmt(sec: number): string {
 }
 
 export function RecordingPlayer({ sessionId }: { sessionId: string }) {
-  const { studentBookings, slides } = useApp();
+  const { studentBookings, teacherBookings, slides } = useApp();
 
   // Real deployments only look at the member's own bookings; the seed
   // sessions exist purely for the stub preview.
   const session: Session | undefined = [
     ...studentBookings,
+    ...teacherBookings,
     ...(isSupabaseEnabled
       ? []
       : [
@@ -41,7 +44,22 @@ export function RecordingPlayer({ sessionId }: { sessionId: string }) {
         ]),
   ].find((s) => s.id === sessionId);
 
-  const chapters = slides[sessionId] ?? [];
+  // The store only holds the user's OWN slides, so a learner replaying a
+  // professional's session needs the deck fetched by session id (the slides
+  // table is readable by any signed-in participant).
+  const [remoteSlides, setRemoteSlides] = useState<Slide[] | null>(null);
+  useEffect(() => {
+    if (!isSupabaseEnabled) return;
+    let cancelled = false;
+    void fetchSlides(sessionId).then((rows) => {
+      if (!cancelled && rows.length) setRemoteSlides(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  const chapters = remoteSlides ?? slides[sessionId] ?? [];
   const duration = (session?.durationMins ?? 10) * 60;
 
   const [position, setPosition] = useState(0);
