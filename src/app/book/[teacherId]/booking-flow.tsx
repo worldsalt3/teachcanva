@@ -30,7 +30,7 @@ function to12h(value: string): string {
 }
 
 export function BookingFlow({ teacher }: { teacher: Teacher }) {
-  const { studentWallet, createBooking } = useApp();
+  const { studentWallet, createBooking, userEmail } = useApp();
   const firstAvailable = teacher.availability.findIndex((d) => d.available);
   // No availability grid published yet → free-form date & time inputs.
   const manual = firstAvailable === -1;
@@ -72,7 +72,7 @@ export function BookingFlow({ teacher }: { teacher: Teacher }) {
       if (method === "card") {
         const res = await processPayment({
           amount: total,
-          email: "student@teachcanvas.app",
+          email: userEmail ?? "student@teachcanvas.app",
           label: `Session with ${teacher.name}`,
         });
         if (res.status !== "success") return;

@@ -18,7 +18,7 @@ import { cn, formatNaira, formatLP } from "@/lib/utils";
 const TOP_UP_AMOUNTS = [5000, 10000, 20000];
 
 export default function WalletPage() {
-  const { studentWallet: wallet, topUpWallet, hydrated } = useApp();
+  const { studentWallet: wallet, topUpWallet, hydrated, userEmail } = useApp();
   const [copied, setCopied] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [amount, setAmount] = useState(10000);
@@ -30,7 +30,7 @@ export default function WalletPage() {
     try {
       const res = await processPayment({
         amount,
-        email: "student@teachcanvas.app",
+        email: userEmail ?? "student@teachcanvas.app",
         label: "Wallet top-up",
         creditRole: "student",
       });

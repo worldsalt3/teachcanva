@@ -24,6 +24,7 @@ export default function TeacherDashboardPage() {
     profileName,
     userId,
     cohorts,
+    teacherBookings,
   } = useApp();
 
   const displayName =
@@ -31,15 +32,21 @@ export default function TeacherDashboardPage() {
   const firstName = displayName.split(" ")[0];
 
   const ownerId = userId ?? currentTeacher.id;
-  const scheduled = cohorts
-    .filter((c) => c.professionalId === ownerId && c.status === "scheduled")
-    .map(cohortToSession);
+  const scheduled = [
+    // 1:1 sessions learners booked with this professional.
+    ...teacherBookings.filter((b) => b.status === "upcoming"),
+    ...cohorts
+      .filter((c) => c.professionalId === ownerId && c.status === "scheduled")
+      .map(cohortToSession),
+  ];
   const scheduledList = isSupabaseEnabled
     ? scheduled
     : scheduled.length
       ? scheduled
       : teacherScheduled;
-  const past = isSupabaseEnabled ? [] : teacherPast;
+  const past = isSupabaseEnabled
+    ? teacherBookings.filter((b) => b.status === "completed")
+    : teacherPast;
 
   const instantId = `live-${userId ?? "instant"}`;
   const teachLiveHref = `/live/${instantId}?as=teacher`;

@@ -40,6 +40,8 @@ import { getSessionUser, signOutBackend } from "@/lib/services/auth";
 import {
   applyWalletTransaction,
   fetchBookings,
+  fetchTeacherBookings,
+  updateBookingStatus,
   fetchCohortEnrolments,
   fetchCohortSessions,
   fetchOwnedSlides,
@@ -98,12 +100,14 @@ const seedNotifications: AppNotification[] = [
 interface PersistShape {
   authenticated: boolean;
   userId: string | null;
+  userEmail: string | null;
   profileName: string | null;
   role: Role;
   teachers: Teacher[];
   studentWallet: WalletAccount;
   teacherWallet: WalletAccount;
   studentBookings: Session[];
+  teacherBookings: Session[];
   cohorts: CohortSession[];
   cohortEnrolments: Record<string, "enrolled" | "waitlisted">;
   notifications: AppNotification[];
@@ -131,12 +135,14 @@ function initialState(): PersistShape {
     return {
       authenticated: false,
       userId: null,
+      userEmail: null,
       profileName: null,
       role: "student",
       teachers: [],
       studentWallet: emptyWallet(),
       teacherWallet: emptyWallet(),
       studentBookings: [],
+      teacherBookings: [],
       cohorts: [],
       cohortEnrolments: {},
       notifications: [],
@@ -149,12 +155,14 @@ function initialState(): PersistShape {
     // app is instantly explorable; logging out gates behind the login flow.
     authenticated: true,
     userId: null,
+    userEmail: null,
     profileName: null,
     role: "student",
     teachers: structuredClone(seedTeachers),
     studentWallet: structuredClone(seedStudentWallet),
     teacherWallet: structuredClone(seedTeacherWallet),
     studentBookings: structuredClone(studentUpcoming),
+    teacherBookings: [],
     cohorts: structuredClone(seedCohorts),
     cohortEnrolments: {},
     notifications: structuredClone(seedNotifications),
@@ -222,6 +230,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!user) return false;
     const [
       bookings,
+      teacherBookings,
       slides,
       studentW,
       teacherW,
@@ -230,6 +239,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       enrolments,
     ] = await Promise.all([
       fetchBookings(),
+      fetchTeacherBookings(),
       fetchOwnedSlides(),
       fetchWallet("student"),
       fetchWallet("teacher"),
@@ -241,9 +251,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...s,
       authenticated: true,
       userId: user.id,
+      userEmail: user.email || null,
       profileName: user.name ?? s.profileName,
       role: user.role,
       studentBookings: bookings,
+      teacherBookings,
       slides,
       studentWallet: studentW ?? emptyWallet(),
       teacherWallet: teacherW ?? emptyWallet(),
@@ -328,8 +340,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const createBooking = useCallback((draft: BookingDraft): Session => {
     let booking!: Session;
+    let learnerName = "";
 
     setState((s) => {
+      learnerName = s.profileName ?? "";
       const teacher =
         s.teachers.find((t) => t.id === draft.teacherId) ??
         (isSupabaseEnabled ? undefined : getTeacher(draft.teacherId));
@@ -384,11 +398,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       void insertBooking({
         teacherId: UUID_RE.test(draft.teacherId) ? draft.teacherId : null,
         counterpartName: booking.counterpartName,
+        studentName: learnerName,
         subject: booking.subject,
         topic: booking.topic,
         dateLabel: booking.dateLabel,
         timeLabel: booking.timeLabel,
         durationMins: booking.durationMins,
+        amount: draft.amount,
       });
       if (draft.payWith === "wallet") {
         void applyWalletTransaction("student", {
@@ -411,9 +427,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const cancelBooking = useCallback((id: string) => {
     let refunded = 0;
     let cancelledTopic = "";
+    let didCancel = false;
     setState((s) => {
       const booking = s.studentBookings.find((b) => b.id === id);
       if (!booking || booking.status !== "upcoming") return s;
+      didCancel = true;
       refunded = booking.amount ?? 0;
       cancelledTopic = booking.topic;
 
@@ -453,14 +471,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
 
-    if (isSupabaseEnabled && refunded > 0) {
-      void applyWalletTransaction("student", {
-        title: `Refund — ${cancelledTopic}`,
-        subtitle: `Cancelled • ${ledgerDate()}`,
-        amount: refunded,
-        direction: "in",
-        status: "completed",
-      });
+    if (isSupabaseEnabled && didCancel) {
+      void updateBookingStatus(
+        id,
+        "cancelled",
+        refunded > 0 ? "refunded" : undefined,
+      );
+      if (refunded > 0) {
+        void applyWalletTransaction("student", {
+          title: `Refund — ${cancelledTopic}`,
+          subtitle: `Cancelled • ${ledgerDate()}`,
+          amount: refunded,
+          direction: "in",
+          status: "completed",
+        });
+      }
     }
   }, []);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Check, Sparkles, Wallet } from "lucide-react";
@@ -26,6 +26,20 @@ const CONFETTI_COLORS = [
 export default function SessionCompletePage() {
   const { id } = useParams<{ id: string }>();
   const { cohorts, studentBookings } = useApp();
+
+  // Settle the booking server-side: mark completed + release escrow to the
+  // professional. Fire-and-forget — non-booking ids (cohorts, instant rooms)
+  // 404 harmlessly, and the route is idempotent per booking.
+  useEffect(() => {
+    if (!isSupabaseEnabled || !id) return;
+    void fetch("/api/sessions/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bookingId: id }),
+    }).catch(() => {
+      // Settled lazily on a later visit — the screen still renders.
+    });
+  }, [id]);
 
   // Summarise the real session that just ended; the mock seed only backs the
   // stub preview when no backend is configured.

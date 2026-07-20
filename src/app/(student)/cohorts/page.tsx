@@ -20,8 +20,6 @@ import { useApp } from "@/lib/store/app-provider";
 import type { CohortSession } from "@/lib/mock/types";
 import { cn, formatNaira } from "@/lib/utils";
 
-const LIVE_HREF = "/live/live-advanced-calculus?as=student";
-
 export default function CohortsPage() {
   const { hydrated, cohorts, cohortEnrolments, enrolInCohort, studentWallet } =
     useApp();
@@ -189,7 +187,7 @@ export default function CohortsPage() {
             <div className="mt-5">
               {openStatus === "enrolled" ? (
                 open.status === "live" ? (
-                  <Link href={LIVE_HREF} className="block">
+                  <Link href={`/live/${open.id}?as=student`} className="block">
                     <Button fullWidth size="lg" variant="success">
                       Join live session
                     </Button>

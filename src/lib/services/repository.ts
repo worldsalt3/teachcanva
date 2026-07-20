@@ -80,6 +80,7 @@ export async function updateMyAvailability(
 interface BookingRow {
   id: string;
   counterpart_name: string;
+  student_name?: string | null;
   subject: string;
   topic: string;
   date_label: string;
@@ -89,6 +90,7 @@ interface BookingRow {
   countdown: string | null;
   replay: boolean;
   rating: number | string | null;
+  amount?: number | null;
 }
 
 function toSession(r: BookingRow): Session {
@@ -104,28 +106,71 @@ function toSession(r: BookingRow): Session {
     countdown: r.countdown ?? undefined,
     replay: r.replay,
     rating: r.rating == null ? undefined : Number(r.rating),
+    amount: r.amount ? Number(r.amount) : undefined,
   };
 }
 
 export async function fetchBookings(): Promise<Session[]> {
   const supabase = createClient();
   if (!supabase) return [];
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
   const { data, error } = await supabase
     .from("bookings")
     .select("*")
+    .eq("student_id", user.id)
+    .neq("status", "cancelled")
     .order("created_at", { ascending: false });
   if (error || !data) return [];
   return (data as BookingRow[]).map(toSession);
 }
 
+/**
+ * Sessions booked *with* the signed-in professional (teacher side of the
+ * ledger). The counterpart shown is the learner, so `student_name` replaces
+ * `counterpart_name` in the mapped Session.
+ */
+export async function fetchTeacherBookings(): Promise<Session[]> {
+  const supabase = createClient();
+  if (!supabase) return [];
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: listing } = await supabase
+    .from("teachers")
+    .select("id")
+    .eq("profile_id", user.id)
+    .maybeSingle();
+  if (!listing) return [];
+
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("teacher_id", listing.id)
+    .neq("status", "cancelled")
+    .order("created_at", { ascending: false });
+  if (error || !data) return [];
+  return (data as BookingRow[]).map((r) => ({
+    ...toSession(r),
+    counterpartName: r.student_name || "Learner",
+  }));
+}
+
 export interface NewBooking {
   teacherId: string | null;
   counterpartName: string;
+  studentName?: string;
   subject: string;
   topic: string;
   dateLabel: string;
   timeLabel: string;
   durationMins: number;
+  /** Naira held in escrow until the session completes. */
+  amount?: number;
 }
 
 export async function insertBooking(b: NewBooking): Promise<Session | null> {
@@ -142,17 +187,34 @@ export async function insertBooking(b: NewBooking): Promise<Session | null> {
       student_id: user.id,
       teacher_id: b.teacherId,
       counterpart_name: b.counterpartName,
+      student_name: b.studentName ?? "",
       subject: b.subject,
       topic: b.topic,
       date_label: b.dateLabel,
       time_label: b.timeLabel,
       duration_mins: b.durationMins,
       status: "upcoming",
+      amount: Math.round(b.amount ?? 0),
+      escrow_status: b.amount ? "held" : "none",
     })
     .select("*")
     .single();
   if (error || !data) return null;
   return toSession(data as BookingRow);
+}
+
+/** Updates a booking's lifecycle status (owner-side RLS applies). */
+export async function updateBookingStatus(
+  id: string,
+  status: Session["status"],
+  escrowStatus?: "none" | "held" | "released" | "refunded",
+): Promise<boolean> {
+  const supabase = createClient();
+  if (!supabase) return false;
+  const patch: Record<string, unknown> = { status };
+  if (escrowStatus) patch.escrow_status = escrowStatus;
+  const { error } = await supabase.from("bookings").update(patch).eq("id", id);
+  return !error;
 }
 
 // ─── slides ──────────────────────────────────────────────────────────────────

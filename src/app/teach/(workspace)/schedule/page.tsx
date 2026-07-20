@@ -60,12 +60,19 @@ export default function TeacherSchedulePage() {
     Sat: true,
     Sun: false,
   });
-  const { cohorts, createCohortSession, userId, hydrated } = useApp();
+  const { cohorts, createCohortSession, userId, hydrated, teacherBookings } =
+    useApp();
   const myCohorts = cohorts.filter(
     (c) => c.professionalId === (userId ?? currentTeacher.id),
   );
   const sessions = isSupabaseEnabled
-    ? myCohorts.filter((c) => c.status === "scheduled").map(cohortToSession)
+    ? [
+        // 1:1 sessions learners booked with this professional.
+        ...teacherBookings.filter((b) => b.status === "upcoming"),
+        ...myCohorts
+          .filter((c) => c.status === "scheduled")
+          .map(cohortToSession),
+      ]
     : day === "today"
       ? teacherScheduled
       : [];
