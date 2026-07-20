@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/sheet";
 import { Field, Input } from "@/components/ui/input";
 import { Chip } from "@/components/ui/chip";
+import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
 import { ProgressBar } from "@/components/ui/progress";
 import {
   cohortToSession,
@@ -59,7 +60,7 @@ export default function TeacherSchedulePage() {
     Sat: true,
     Sun: false,
   });
-  const { cohorts, createCohortSession, userId } = useApp();
+  const { cohorts, createCohortSession, userId, hydrated } = useApp();
   const myCohorts = cohorts.filter(
     (c) => c.professionalId === (userId ?? currentTeacher.id),
   );
@@ -201,13 +202,22 @@ export default function TeacherSchedulePage() {
       </div>
 
       <div className="px-5 pt-5">
-        <p className="mb-3 text-[13px] text-fg-muted">
-          {sessions.length === 0
-            ? "No sessions scheduled"
-            : `${sessions.length} ${sessions.length === 1 ? "session" : "sessions"} scheduled`}
-        </p>
+        {hydrated ? (
+          <p className="mb-3 text-[13px] text-fg-muted">
+            {sessions.length === 0
+              ? "No sessions scheduled"
+              : `${sessions.length} ${sessions.length === 1 ? "session" : "sessions"} scheduled`}
+          </p>
+        ) : (
+          <Skeleton className="mb-3 h-3.5 w-40" />
+        )}
 
-        {sessions.length > 0 ? (
+        {!hydrated ? (
+          <div className="space-y-3">
+            <SkeletonCard lines={2} />
+            <SkeletonCard lines={2} />
+          </div>
+        ) : sessions.length > 0 ? (
           <div className="space-y-3">
             {sessions.map((session) => (
               <ScheduledSessionCard key={session.id} session={session} />

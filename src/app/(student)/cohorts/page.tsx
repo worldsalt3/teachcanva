@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { BottomSheet } from "@/components/ui/sheet";
+import { Skeleton, SkeletonProfileCard } from "@/components/ui/skeleton";
 import { ProgressBar } from "@/components/ui/progress";
 import { Avatar } from "@/components/ui/avatar";
 import { useApp } from "@/lib/store/app-provider";
@@ -22,7 +23,8 @@ import { cn, formatNaira } from "@/lib/utils";
 const LIVE_HREF = "/live/live-advanced-calculus?as=student";
 
 export default function CohortsPage() {
-  const { cohorts, cohortEnrolments, enrolInCohort, studentWallet } = useApp();
+  const { hydrated, cohorts, cohortEnrolments, enrolInCohort, studentWallet } =
+    useApp();
   const [topic, setTopic] = useState("All");
   const [openId, setOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -73,32 +75,51 @@ export default function CohortsPage() {
       </header>
 
       <div className="no-scrollbar mt-1 flex gap-2 overflow-x-auto px-5 pb-1 pt-2">
-        {topics.map((t) => (
-          <Chip key={t} selected={topic === t} onClick={() => setTopic(t)}>
-            {t}
-          </Chip>
-        ))}
+        {hydrated ? (
+          topics.map((t) => (
+            <Chip key={t} selected={topic === t} onClick={() => setTopic(t)}>
+              {t}
+            </Chip>
+          ))
+        ) : (
+          <>
+            <Skeleton className="h-9 w-16 shrink-0 rounded-full" />
+            <Skeleton className="h-9 w-20 shrink-0 rounded-full" />
+            <Skeleton className="h-9 w-24 shrink-0 rounded-full" />
+            <Skeleton className="h-9 w-20 shrink-0 rounded-full" />
+          </>
+        )}
       </div>
 
       <div className="mt-4 space-y-3 px-5">
-        {results.map((cohort) => (
-          <CohortCard
-            key={cohort.id}
-            cohort={cohort}
-            enrolment={cohortEnrolments[cohort.id]}
-            onOpen={() => {
-              setError(null);
-              setOpenId(cohort.id);
-            }}
-          />
-        ))}
-        {results.length === 0 && (
-          <div className="rounded-card border border-dashed border-border-soft py-12 text-center">
-            <p className="font-semibold text-fg">No cohort sessions</p>
-            <p className="mt-1 text-[13px] text-fg-muted">
-              Try a different topic.
-            </p>
-          </div>
+        {!hydrated ? (
+          <>
+            <SkeletonProfileCard />
+            <SkeletonProfileCard />
+            <SkeletonProfileCard />
+          </>
+        ) : (
+          <>
+            {results.map((cohort) => (
+              <CohortCard
+                key={cohort.id}
+                cohort={cohort}
+                enrolment={cohortEnrolments[cohort.id]}
+                onOpen={() => {
+                  setError(null);
+                  setOpenId(cohort.id);
+                }}
+              />
+            ))}
+            {results.length === 0 && (
+              <div className="rounded-card border border-dashed border-border-soft py-12 text-center">
+                <p className="font-semibold text-fg">No cohort sessions</p>
+                <p className="mt-1 text-[13px] text-fg-muted">
+                  Try a different topic.
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
 

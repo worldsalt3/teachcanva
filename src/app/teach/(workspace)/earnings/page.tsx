@@ -5,6 +5,12 @@ import { Building2, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/sheet";
 import { SectionHeader } from "@/components/ui/section-header";
+import {
+  Skeleton,
+  SkeletonBalanceCard,
+  SkeletonCard,
+  SkeletonList,
+} from "@/components/ui/skeleton";
 import { TransactionRow } from "@/components/wallet/transaction-row";
 import { useApp } from "@/lib/store/app-provider";
 import { makePaymentReference } from "@/lib/services";
@@ -12,7 +18,7 @@ import { isMonnifyEnabled } from "@/lib/services/config";
 import { cn, formatNaira, formatTP, tpLevel } from "@/lib/utils";
 
 export default function TeacherEarningsPage() {
-  const { teacherWallet: wallet, withdrawWallet } = useApp();
+  const { teacherWallet: wallet, withdrawWallet, hydrated } = useApp();
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [amount, setAmount] = useState(wallet.balance);
   const [processing, setProcessing] = useState(false);
@@ -62,84 +68,112 @@ export default function TeacherEarningsPage() {
       </header>
 
       <div className="space-y-5 px-5 pt-2">
-        <div className="relative overflow-hidden rounded-card bg-linear-to-br from-primary via-primary-600 to-primary-700 p-5 text-white shadow-xl shadow-primary/25">
-          <div className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-white/10 blur-2xl" />
-          <p className="text-[13px] font-medium text-white/80">
-            Available balance
-          </p>
-          <p className="mt-1.5 font-display text-[34px] font-extrabold leading-none">
-            {formatNaira(wallet.balance)}
-          </p>
-          <div className="mt-5 flex gap-2.5">
-            <button
-              type="button"
-              onClick={() => setWithdrawOpen(true)}
-              className="tap h-11 flex-1 rounded-xl bg-white text-sm font-semibold text-primary-700 transition-transform active:scale-[0.98]"
-            >
-              Withdraw
-            </button>
-            <button
-              type="button"
-              onClick={() => notify("Statement is on its way to your email")}
-              className="tap h-11 flex-1 rounded-xl bg-white/15 text-sm font-semibold text-white backdrop-blur-sm transition-transform active:scale-[0.98]"
-            >
-              Statement
-            </button>
-          </div>
-        </div>
+        {!hydrated ? (
+          <>
+            <SkeletonBalanceCard />
+            <div className="grid grid-cols-2 gap-3">
+              <Skeleton className="h-24 rounded-card" />
+              <Skeleton className="h-24 rounded-card" />
+            </div>
+            <SkeletonCard lines={2} />
+            <div>
+              <SectionHeader title="Recent Activity" />
+              <SkeletonList rows={4} />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="relative overflow-hidden rounded-card bg-linear-to-br from-primary via-primary-600 to-primary-700 p-5 text-white shadow-xl shadow-primary/25">
+              <div className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-white/10 blur-2xl" />
+              <p className="text-[13px] font-medium text-white/80">
+                Available balance
+              </p>
+              <p className="mt-1.5 font-display text-[34px] font-extrabold leading-none">
+                {formatNaira(wallet.balance)}
+              </p>
+              <div className="mt-5 flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setWithdrawOpen(true)}
+                  className="tap h-11 flex-1 rounded-xl bg-white text-sm font-semibold text-primary-700 transition-transform active:scale-[0.98]"
+                >
+                  Withdraw
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    notify("Statement is on its way to your email")
+                  }
+                  className="tap h-11 flex-1 rounded-xl bg-white/15 text-sm font-semibold text-white backdrop-blur-sm transition-transform active:scale-[0.98]"
+                >
+                  Statement
+                </button>
+              </div>
+            </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-card border border-border bg-surface p-4">
-            <p className="text-[12px] text-fg-muted">Pending payout</p>
-            <p className="mt-1 font-display text-lg font-bold text-gold">
-              {formatNaira(wallet.pendingPayouts)}
-            </p>
-            <p className="mt-0.5 text-[11px] text-fg-faint">
-              Clears in {wallet.pendingClearsIn}
-            </p>
-          </div>
-          <div className="rounded-card border border-border bg-surface p-4">
-            <p className="text-[12px] text-fg-muted">Lifetime earnings</p>
-            <p className="mt-1 font-display text-lg font-bold text-fg">
-              {formatNaira(wallet.lifetimeEarnings)}
-            </p>
-            <p className="mt-0.5 text-[11px] text-fg-faint">All-time payouts</p>
-          </div>
-        </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-card border border-border bg-surface p-4">
+                <p className="text-[12px] text-fg-muted">Pending payout</p>
+                <p className="mt-1 font-display text-lg font-bold text-gold">
+                  {formatNaira(wallet.pendingPayouts)}
+                </p>
+                <p className="mt-0.5 text-[11px] text-fg-faint">
+                  Clears in {wallet.pendingClearsIn}
+                </p>
+              </div>
+              <div className="rounded-card border border-border bg-surface p-4">
+                <p className="text-[12px] text-fg-muted">Lifetime earnings</p>
+                <p className="mt-1 font-display text-lg font-bold text-fg">
+                  {formatNaira(wallet.lifetimeEarnings)}
+                </p>
+                <p className="mt-0.5 text-[11px] text-fg-faint">
+                  All-time payouts
+                </p>
+              </div>
+            </div>
 
-        <div className="rounded-card border border-gold/25 bg-gold/10 p-4">
-          <div className="flex items-center gap-3">
-            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-gold/20 text-gold">
-              <Sparkles className="size-5" />
-            </span>
-            <div className="flex-1">
-              <p className="text-[13px] text-fg-muted">Professional Points</p>
-              <p className="font-display text-xl font-bold text-fg">
-                {formatTP(wallet.tpBalance)}
+            <div className="rounded-card border border-gold/25 bg-gold/10 p-4">
+              <div className="flex items-center gap-3">
+                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-gold/20 text-gold">
+                  <Sparkles className="size-5" />
+                </span>
+                <div className="flex-1">
+                  <p className="text-[13px] text-fg-muted">
+                    Professional Points
+                  </p>
+                  <p className="font-display text-xl font-bold text-fg">
+                    {formatTP(wallet.tpBalance)}
+                  </p>
+                </div>
+                <span className="rounded-full bg-gold/20 px-2.5 py-1 text-[11px] font-semibold text-gold">
+                  {tpLevel(wallet.tpBalance).name}
+                </span>
+              </div>
+              <p className="mt-3 text-[12px] text-fg-muted">
+                {(() => {
+                  const level = tpLevel(wallet.tpBalance);
+                  return level.nextAt
+                    ? `${formatTP(level.nextAt - wallet.tpBalance)} to ${level.nextAt === 15000 ? "Platinum" : "the next level"} · 2× live bonus active`
+                    : "Platinum — top level reached · 2× live bonus active";
+                })()}
               </p>
             </div>
-            <span className="rounded-full bg-gold/20 px-2.5 py-1 text-[11px] font-semibold text-gold">
-              {tpLevel(wallet.tpBalance).name}
-            </span>
-          </div>
-          <p className="mt-3 text-[12px] text-fg-muted">
-            {(() => {
-              const level = tpLevel(wallet.tpBalance);
-              return level.nextAt
-                ? `${formatTP(level.nextAt - wallet.tpBalance)} to ${level.nextAt === 15000 ? "Platinum" : "the next level"} · 2× live bonus active`
-                : "Platinum — top level reached · 2× live bonus active";
-            })()}
-          </p>
-        </div>
 
-        <div>
-          <SectionHeader title="Recent Activity" />
-          <div className="divide-y divide-border rounded-card border border-border bg-surface px-4">
-            {wallet.transactions.map((tx) => (
-              <TransactionRow key={tx.id} tx={tx} />
-            ))}
-          </div>
-        </div>
+            <div>
+              <SectionHeader title="Recent Activity" />
+              <div className="divide-y divide-border rounded-card border border-border bg-surface px-4">
+                {wallet.transactions.map((tx) => (
+                  <TransactionRow key={tx.id} tx={tx} />
+                ))}
+                {wallet.transactions.length === 0 && (
+                  <p className="py-8 text-center text-[13px] text-fg-muted">
+                    No activity yet — host a session to start earning.
+                  </p>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <BottomSheet

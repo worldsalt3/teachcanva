@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { AppHeader, BackButton } from "@/components/layout/app-header";
 import { AuthGate } from "@/components/layout/auth-gate";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useApp } from "@/lib/store/app-provider";
 import type { AppNotification } from "@/lib/services/types";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ const meta: Record<
 export default function NotificationsPage() {
   const router = useRouter();
   const {
+    hydrated,
     notifications,
     unreadCount,
     markAllNotificationsRead,
@@ -61,7 +63,20 @@ export default function NotificationsPage() {
         </div>
       </AppHeader>
 
-      {notifications.length === 0 ? (
+      {!hydrated ? (
+        <div className="divide-y divide-border px-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-start gap-3 py-4">
+              <Skeleton className="size-10 shrink-0 rounded-xl" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-3.5 w-2/5" />
+                <Skeleton className="h-3 w-4/5" />
+                <Skeleton className="h-2.5 w-16" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : notifications.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center px-10 text-center">
           <span className="grid size-16 place-items-center rounded-full bg-surface text-fg-faint">
             <Bell className="size-7" />

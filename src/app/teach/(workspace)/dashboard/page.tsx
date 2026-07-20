@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Bell, ChevronRight, Sparkles, Video } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { SectionHeader } from "@/components/ui/section-header";
+import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
 import {
   cohortToSession,
   PastSessionCard,
@@ -16,6 +17,7 @@ import { formatNaira, formatTP } from "@/lib/utils";
 
 export default function TeacherDashboardPage() {
   const {
+    hydrated,
     teacherWallet,
     unreadCount,
     notifyGoLive,
@@ -48,12 +50,19 @@ export default function TeacherDashboardPage() {
         <div className="flex items-center justify-between gap-3">
           <Link href="/teach/profile" className="tap flex items-center gap-3">
             <Avatar name={displayName} size="md" ring />
-            <div>
-              <p className="text-[13px] text-fg-muted">Good afternoon</p>
-              <p className="font-display text-lg font-bold leading-tight text-fg">
-                {firstName} 👋
-              </p>
-            </div>
+            {hydrated ? (
+              <div>
+                <p className="text-[13px] text-fg-muted">Good afternoon</p>
+                <p className="font-display text-lg font-bold leading-tight text-fg">
+                  {firstName} 👋
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            )}
           </Link>
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/15 px-3 py-1.5 text-[13px] font-bold text-gold">
@@ -98,28 +107,32 @@ export default function TeacherDashboardPage() {
           </Link>
         </div>
 
-        <Link
-          href="/teach/earnings"
-          className="tap block rounded-card border border-border bg-surface p-4"
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-[13px] text-fg-muted">Available balance</p>
-            <span className="inline-flex items-center gap-0.5 text-[12px] font-semibold text-primary-soft">
-              Earnings
-              <ChevronRight className="size-4" />
-            </span>
-          </div>
-          <p className="mt-1 font-display text-2xl font-bold text-fg">
-            {formatNaira(teacherWallet.balance)}
-          </p>
-          <p className="mt-1.5 text-[12px] text-fg-muted">
-            Pending payout{" "}
-            <span className="font-semibold text-gold">
-              {formatNaira(teacherWallet.pendingPayouts)}
-            </span>{" "}
-            · clears in {teacherWallet.pendingClearsIn}
-          </p>
-        </Link>
+        {!hydrated ? (
+          <SkeletonCard lines={2} />
+        ) : (
+          <Link
+            href="/teach/earnings"
+            className="tap block rounded-card border border-border bg-surface p-4"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-[13px] text-fg-muted">Available balance</p>
+              <span className="inline-flex items-center gap-0.5 text-[12px] font-semibold text-primary-soft">
+                Earnings
+                <ChevronRight className="size-4" />
+              </span>
+            </div>
+            <p className="mt-1 font-display text-2xl font-bold text-fg">
+              {formatNaira(teacherWallet.balance)}
+            </p>
+            <p className="mt-1.5 text-[12px] text-fg-muted">
+              Pending payout{" "}
+              <span className="font-semibold text-gold">
+                {formatNaira(teacherWallet.pendingPayouts)}
+              </span>{" "}
+              · clears in {teacherWallet.pendingClearsIn}
+            </p>
+          </Link>
+        )}
 
         <section>
           <SectionHeader
@@ -127,7 +140,12 @@ export default function TeacherDashboardPage() {
             actionLabel="View all"
             actionHref="/teach/schedule"
           />
-          {scheduledList.length > 0 ? (
+          {!hydrated ? (
+            <div className="space-y-3">
+              <SkeletonCard lines={2} />
+              <SkeletonCard lines={2} />
+            </div>
+          ) : scheduledList.length > 0 ? (
             <div className="space-y-3">
               {scheduledList.map((session) => (
                 <ScheduledSessionCard key={session.id} session={session} />
@@ -148,7 +166,7 @@ export default function TeacherDashboardPage() {
           )}
         </section>
 
-        {past.length > 0 && (
+        {hydrated && past.length > 0 && (
           <section>
             <SectionHeader title="Past Sessions" />
             <div className="space-y-2.5">

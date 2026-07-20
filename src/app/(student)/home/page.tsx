@@ -5,6 +5,12 @@ import { Bell, Plus } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { SearchTrigger } from "@/components/ui/search-bar";
 import { SectionHeader } from "@/components/ui/section-header";
+import {
+  Skeleton,
+  SkeletonCard,
+  SkeletonRail,
+  SkeletonRow,
+} from "@/components/ui/skeleton";
 import { LiveNowCard } from "@/components/session/live-now-card";
 import {
   RecentSessionCard,
@@ -17,8 +23,14 @@ import { isSupabaseEnabled } from "@/lib/services/config";
 import { useApp } from "@/lib/store/app-provider";
 
 export default function StudentHomePage() {
-  const { studentName, studentBookings, unreadCount, teachers, cohorts } =
-    useApp();
+  const {
+    hydrated,
+    studentName,
+    studentBookings,
+    unreadCount,
+    teachers,
+    cohorts,
+  } = useApp();
   const firstName = studentName.split(" ")[0];
 
   // Live Now comes from cohorts that are actually live; the seed rail only
@@ -50,12 +62,19 @@ export default function StudentHomePage() {
         <div className="flex items-center justify-between gap-3">
           <Link href="/profile" className="tap flex items-center gap-3">
             <Avatar name={studentName} size="md" ring />
-            <div>
-              <p className="text-[13px] text-fg-muted">Good afternoon</p>
-              <p className="font-display text-lg font-bold leading-tight text-fg">
-                {firstName} 👋
-              </p>
-            </div>
+            {hydrated ? (
+              <div>
+                <p className="text-[13px] text-fg-muted">Good afternoon</p>
+                <p className="font-display text-lg font-bold leading-tight text-fg">
+                  {firstName} 👋
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            )}
           </Link>
           <Link
             href="/notifications"
@@ -80,7 +99,9 @@ export default function StudentHomePage() {
             actionLabel="See all"
             actionHref="/explore"
           />
-          {live.length > 0 ? (
+          {!hydrated ? (
+            <SkeletonRail />
+          ) : live.length > 0 ? (
             <div className="no-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-1">
               {live.map((item) => (
                 <LiveNowCard key={item.id} item={item} />
@@ -107,7 +128,12 @@ export default function StudentHomePage() {
             actionLabel="Manage"
             actionHref="/profile"
           />
-          {upcoming.length > 0 ? (
+          {!hydrated ? (
+            <div className="space-y-2.5">
+              <SkeletonCard lines={2} />
+              <SkeletonCard lines={2} />
+            </div>
+          ) : upcoming.length > 0 ? (
             <div className="space-y-2.5">
               {upcoming.map((session, i) => (
                 <UpcomingSessionCard
@@ -132,7 +158,7 @@ export default function StudentHomePage() {
           )}
         </section>
 
-        {recent.length > 0 && (
+        {hydrated && recent.length > 0 && (
           <section>
             <SectionHeader
               title="Recent Sessions"
@@ -147,19 +173,34 @@ export default function StudentHomePage() {
           </section>
         )}
 
-        {recommended.length > 0 && (
+        {!hydrated ? (
           <section>
             <SectionHeader
               title="Recommended For You"
               actionLabel="See all"
               actionHref="/explore"
             />
-            <div className="space-y-2.5">
-              {recommended.map((teacher) => (
-                <TeacherRow key={teacher.id} teacher={teacher} />
-              ))}
+            <div className="rounded-card border border-border bg-surface px-4">
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
             </div>
           </section>
+        ) : (
+          recommended.length > 0 && (
+            <section>
+              <SectionHeader
+                title="Recommended For You"
+                actionLabel="See all"
+                actionHref="/explore"
+              />
+              <div className="space-y-2.5">
+                {recommended.map((teacher) => (
+                  <TeacherRow key={teacher.id} teacher={teacher} />
+                ))}
+              </div>
+            </section>
+          )
         )}
       </div>
 

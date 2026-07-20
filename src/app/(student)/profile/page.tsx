@@ -14,6 +14,7 @@ import {
   Wallet as WalletIcon,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
+import { Skeleton, SkeletonRow } from "@/components/ui/skeleton";
 import { useApp } from "@/lib/store/app-provider";
 import { formatNaira, formatLP } from "@/lib/utils";
 
@@ -91,7 +92,8 @@ const menu: { heading: string; items: MenuItem[] }[] = [
 ];
 
 export default function StudentProfilePage() {
-  const { studentName, studentWallet, studentBookings, signOut } = useApp();
+  const { hydrated, studentName, studentWallet, studentBookings, signOut } =
+    useApp();
 
   return (
     <div className="flex-1">
@@ -102,38 +104,49 @@ export default function StudentProfilePage() {
       </header>
 
       <div className="space-y-6 px-5 pt-2">
-        <div className="flex items-center gap-4 rounded-card border border-border bg-surface p-4">
-          <Avatar name={studentName} size="xl" ring />
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-display text-xl font-bold text-fg">
-              {studentName}
-            </p>
-            <p className="text-[13px] text-fg-muted">
-              Learner · Lagos, Nigeria
-            </p>
-            <Link
-              href="/settings"
-              className="tap mt-2 inline-flex items-center gap-1.5 rounded-full border border-border-soft px-3 py-1 text-[12px] font-semibold text-fg-muted"
-            >
-              <Pencil className="size-3.5" />
-              Edit profile
-            </Link>
-          </div>
-        </div>
+        {!hydrated ? (
+          <>
+            <div className="rounded-card border border-border bg-surface p-4">
+              <SkeletonRow className="py-0" />
+            </div>
+            <Skeleton className="h-20 rounded-card" />
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-4 rounded-card border border-border bg-surface p-4">
+              <Avatar name={studentName} size="xl" ring />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-display text-xl font-bold text-fg">
+                  {studentName}
+                </p>
+                <p className="text-[13px] text-fg-muted">
+                  Learner · Lagos, Nigeria
+                </p>
+                <Link
+                  href="/settings"
+                  className="tap mt-2 inline-flex items-center gap-1.5 rounded-full border border-border-soft px-3 py-1 text-[12px] font-semibold text-fg-muted"
+                >
+                  <Pencil className="size-3.5" />
+                  Edit profile
+                </Link>
+              </div>
+            </div>
 
-        <div className="grid grid-cols-3 overflow-hidden rounded-card border border-border bg-surface text-center">
-          <Stat label="Points" value={formatLP(studentWallet.tpBalance)} />
-          <Stat
-            label="Upcoming"
-            value={String(studentBookings.length)}
-            divided
-          />
-          <Stat
-            label="Wallet"
-            value={formatNaira(studentWallet.balance)}
-            divided
-          />
-        </div>
+            <div className="grid grid-cols-3 overflow-hidden rounded-card border border-border bg-surface text-center">
+              <Stat label="Points" value={formatLP(studentWallet.tpBalance)} />
+              <Stat
+                label="Upcoming"
+                value={String(studentBookings.length)}
+                divided
+              />
+              <Stat
+                label="Wallet"
+                value={formatNaira(studentWallet.balance)}
+                divided
+              />
+            </div>
+          </>
+        )}
 
         {menu.map((group) => (
           <div key={group.heading}>
