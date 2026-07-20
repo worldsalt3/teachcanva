@@ -18,3 +18,12 @@ export type { IconButtonProps } from "./icon-button";
 export { Tabs } from "./tabs";
 export { ProgressBar } from "./progress";
 export { BottomSheet } from "./sheet";
+export {
+  Skeleton,
+  SkeletonRow,
+  SkeletonCard,
+  SkeletonProfileCard,
+  SkeletonRail,
+  SkeletonBalanceCard,
+  SkeletonList,
+} from "./skeleton";

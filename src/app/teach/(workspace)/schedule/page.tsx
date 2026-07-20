@@ -1,18 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarPlus, CalendarX, Check, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/sheet";
 import { Field, Input } from "@/components/ui/input";
 import { Chip } from "@/components/ui/chip";
+import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
 import { ProgressBar } from "@/components/ui/progress";
 import {
   cohortToSession,
   ScheduledSessionCard,
 } from "@/components/session/teacher-session-card";
 import { teacherScheduled, currentTeacher } from "@/lib/mock";
-import type { DaySlots } from "@/lib/mock/types";
+import type { DaySlots, Session } from "@/lib/mock/types";
 import { isSupabaseEnabled } from "@/lib/services/config";
 import {
   fetchMyTeacherListing,
@@ -21,14 +22,22 @@ import {
 import { useApp } from "@/lib/store/app-provider";
 import { cn, formatNaira } from "@/lib/utils";
 
-const DAYS = [
-  { key: "today", label: "Today", sub: "Oct 12" },
-  { key: "tue", label: "Tue", sub: "Oct 13" },
-  { key: "wed", label: "Wed", sub: "Oct 14" },
-  { key: "thu", label: "Thu", sub: "Oct 15" },
-  { key: "fri", label: "Fri", sub: "Oct 16" },
-  { key: "sat", label: "Sat", sub: "Oct 17" },
-];
+/** The next six calendar days as schedule tabs (first is always Today). */
+function buildDays() {
+  return Array.from({ length: 6 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() + i);
+    return {
+      key: i === 0 ? "today" : `d${i}`,
+      label:
+        i === 0
+          ? "Today"
+          : date.toLocaleDateString("en-US", { weekday: "short" }),
+      sub: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      dayNum: date.getDate(),
+    };
+  });
+}
 
 const WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -48,6 +57,7 @@ const COHORT_SEATS = [50, 100, 200];
 const COHORT_PRICES = [2500, 5000, 7500];
 
 export default function TeacherSchedulePage() {
+  const days = useMemo(() => buildDays(), []);
   const [day, setDay] = useState("today");
   const [availOpen, setAvailOpen] = useState(false);
   const [avail, setAvail] = useState<Record<string, boolean>>({
@@ -59,19 +69,37 @@ export default function TeacherSchedulePage() {
     Sat: true,
     Sun: false,
   });
-  const { cohorts, createCohortSession, userId } = useApp();
+  const { cohorts, createCohortSession, userId, hydrated, teacherBookings } =
+    useApp();
   const myCohorts = cohorts.filter(
     (c) => c.professionalId === (userId ?? currentTeacher.id),
   );
+  const selectedDay = days.find((d) => d.key === day) ?? days[0];
+  /** Matches a freeform date label ("TUE 15", "Oct 13") to the active tab. */
+  const onSelectedDay = (s: Session) => {
+    const num = Number(s.dateLabel.match(/\d+/)?.[0]);
+    return Number.isFinite(num)
+      ? num === selectedDay.dayNum
+      : selectedDay.key === "today";
+  };
   const sessions = isSupabaseEnabled
-    ? myCohorts.filter((c) => c.status === "scheduled").map(cohortToSession)
+    ? [
+        // 1:1 sessions learners booked with this professional.
+        ...teacherBookings.filter(
+          (b) => b.status === "upcoming" && onSelectedDay(b),
+        ),
+        ...myCohorts
+          .filter((c) => c.status === "scheduled")
+          .map(cohortToSession)
+          .filter(onSelectedDay),
+      ]
     : day === "today"
       ? teacherScheduled
       : [];
   const [cohortOpen, setCohortOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState(COHORT_TOPICS[0]);
-  const [cohortDay, setCohortDay] = useState(DAYS[1].sub);
+  const [cohortDay, setCohortDay] = useState(() => days[1].sub);
   const [time, setTime] = useState(COHORT_TIMES[3]);
   const [duration, setDuration] = useState(90);
   const [seatLimit, setSeatLimit] = useState(100);
@@ -175,39 +203,52 @@ export default function TeacherSchedulePage() {
       </header>
 
       <div className="no-scrollbar flex gap-2.5 overflow-x-auto px-5 pt-2 pb-1">
-        {DAYS.map((d) => {
-          const active = d.key === day;
-          return (
-            <button
-              key={d.key}
-              type="button"
-              onClick={() => setDay(d.key)}
-              className={cn(
-                "tap grid h-17 w-16 shrink-0 place-items-center rounded-2xl border transition-colors",
-                active
-                  ? "border-primary bg-primary text-white shadow-lg shadow-primary/25"
-                  : "border-border bg-surface text-fg",
-              )}
-            >
-              <span className="text-[11px] font-semibold uppercase tracking-wide opacity-80">
-                {d.label}
-              </span>
-              <span className="text-[15px] font-bold leading-none">
-                {d.sub.split(" ")[1]}
-              </span>
-            </button>
-          );
-        })}
+        {!hydrated
+          ? Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-17 w-16 shrink-0 rounded-2xl" />
+            ))
+          : days.map((d) => {
+              const active = d.key === day;
+              return (
+                <button
+                  key={d.key}
+                  type="button"
+                  onClick={() => setDay(d.key)}
+                  className={cn(
+                    "tap grid h-17 w-16 shrink-0 place-items-center rounded-2xl border transition-colors",
+                    active
+                      ? "border-primary bg-primary text-white shadow-lg shadow-primary/25"
+                      : "border-border bg-surface text-fg",
+                  )}
+                >
+                  <span className="text-[11px] font-semibold uppercase tracking-wide opacity-80">
+                    {d.label}
+                  </span>
+                  <span className="text-[15px] font-bold leading-none">
+                    {d.sub.split(" ")[1]}
+                  </span>
+                </button>
+              );
+            })}
       </div>
 
       <div className="px-5 pt-5">
-        <p className="mb-3 text-[13px] text-fg-muted">
-          {sessions.length === 0
-            ? "No sessions scheduled"
-            : `${sessions.length} ${sessions.length === 1 ? "session" : "sessions"} scheduled`}
-        </p>
+        {hydrated ? (
+          <p className="mb-3 text-[13px] text-fg-muted">
+            {sessions.length === 0
+              ? "No sessions scheduled"
+              : `${sessions.length} ${sessions.length === 1 ? "session" : "sessions"} scheduled`}
+          </p>
+        ) : (
+          <Skeleton className="mb-3 h-3.5 w-40" />
+        )}
 
-        {sessions.length > 0 ? (
+        {!hydrated ? (
+          <div className="space-y-3">
+            <SkeletonCard lines={2} />
+            <SkeletonCard lines={2} />
+          </div>
+        ) : sessions.length > 0 ? (
           <div className="space-y-3">
             {sessions.map((session) => (
               <ScheduledSessionCard key={session.id} session={session} />
@@ -337,7 +378,7 @@ export default function TeacherSchedulePage() {
           </SheetGroup>
 
           <SheetGroup label="Date">
-            {DAYS.slice(1).map((d) => (
+            {days.slice(1).map((d) => (
               <Chip
                 key={d.key}
                 selected={cohortDay === d.sub}

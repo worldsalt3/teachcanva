@@ -30,7 +30,7 @@ function to12h(value: string): string {
 }
 
 export function BookingFlow({ teacher }: { teacher: Teacher }) {
-  const { studentWallet, createBooking } = useApp();
+  const { studentWallet, createBooking, userEmail } = useApp();
   const firstAvailable = teacher.availability.findIndex((d) => d.available);
   // No availability grid published yet → free-form date & time inputs.
   const manual = firstAvailable === -1;
@@ -49,10 +49,15 @@ export function BookingFlow({ teacher }: { teacher: Teacher }) {
   const serviceFee = Math.round(teacher.hourlyRate * 0.05);
   const total = teacher.hourlyRate + serviceFee;
   const walletShort = studentWallet.balance < total;
+  // Wallet payments require covering funds — top up or switch to card.
+  const insufficient = method === "wallet" && walletShort;
 
   const chosenTime = manual ? (customTime ? to12h(customTime) : null) : time;
   const canConfirm =
-    Boolean(chosenTime) && (!manual || Boolean(customDate)) && !processing;
+    Boolean(chosenTime) &&
+    (!manual || Boolean(customDate)) &&
+    !processing &&
+    !insufficient;
 
   const summaryDate = useMemo(() => {
     if (manual) {
@@ -66,13 +71,13 @@ export function BookingFlow({ teacher }: { teacher: Teacher }) {
   }, [manual, customDate, day]);
 
   const handleConfirm = async () => {
-    if (!chosenTime || (manual && !customDate)) return;
+    if (!chosenTime || (manual && !customDate) || insufficient) return;
     setProcessing(true);
     try {
       if (method === "card") {
         const res = await processPayment({
           amount: total,
-          email: "student@teachcanvas.app",
+          email: userEmail ?? "student@teachcanvas.app",
           label: `Session with ${teacher.name}`,
         });
         if (res.status !== "success") return;
@@ -266,12 +271,26 @@ export function BookingFlow({ teacher }: { teacher: Teacher }) {
           >
             {processing
               ? "Processing…"
-              : canConfirm
-                ? `Confirm & Pay ${formatNaira(total)}`
-                : manual
-                  ? "Pick a date & time to continue"
-                  : "Select a time to continue"}
+              : insufficient
+                ? "Insufficient balance — top up or pay by card"
+                : canConfirm
+                  ? `Confirm & Pay ${formatNaira(total)}`
+                  : manual
+                    ? "Pick a date & time to continue"
+                    : "Select a time to continue"}
           </Button>
+          {insufficient && (
+            <p className="mt-2 text-center text-[12px] text-fg-muted">
+              Wallet balance {formatNaira(studentWallet.balance)} · needs{" "}
+              {formatNaira(total)}.{" "}
+              <Link
+                href="/wallet"
+                className="font-semibold text-primary-soft underline"
+              >
+                Top up wallet
+              </Link>
+            </p>
+          )}
         </div>
       </div>
 

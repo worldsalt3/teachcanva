@@ -5,6 +5,7 @@ import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
 import { BottomSheet } from "@/components/ui/sheet";
+import { Skeleton, SkeletonProfileCard } from "@/components/ui/skeleton";
 import { TeacherCard } from "@/components/teacher/teacher-card";
 import { topics } from "@/lib/mock";
 import { useApp } from "@/lib/store/app-provider";
@@ -50,7 +51,7 @@ const SORT_OPTIONS = [
 type Sort = (typeof SORT_OPTIONS)[number]["value"];
 
 export default function ExplorePage() {
-  const { teachers: allTeachers } = useApp();
+  const { teachers: allTeachers, hydrated } = useApp();
   const [query, setQuery] = useState("");
   const [topic, setTopic] = useState("all");
   const [ratingMin, setRatingMin] = useState(0);
@@ -172,21 +173,37 @@ export default function ExplorePage() {
       </div>
 
       <div className="mt-4 px-5">
-        <p className="mb-3 text-[13px] text-fg-muted">
-          {results.length}{" "}
-          {results.length === 1 ? "professional" : "professionals"} available
-        </p>
+        {hydrated ? (
+          <p className="mb-3 text-[13px] text-fg-muted">
+            {results.length}{" "}
+            {results.length === 1 ? "professional" : "professionals"} available
+          </p>
+        ) : (
+          <Skeleton className="mb-3 h-3.5 w-40" />
+        )}
         <div className="space-y-3">
-          {results.map((teacher) => (
-            <TeacherCard key={teacher.id} teacher={teacher} />
-          ))}
-          {results.length === 0 && (
-            <div className="rounded-card border border-dashed border-border-soft py-12 text-center">
-              <p className="font-semibold text-fg">No professionals found</p>
-              <p className="mt-1 text-[13px] text-fg-muted">
-                Try a different search or adjust your filters.
-              </p>
-            </div>
+          {!hydrated ? (
+            <>
+              <SkeletonProfileCard />
+              <SkeletonProfileCard />
+              <SkeletonProfileCard />
+            </>
+          ) : (
+            <>
+              {results.map((teacher) => (
+                <TeacherCard key={teacher.id} teacher={teacher} />
+              ))}
+              {results.length === 0 && (
+                <div className="rounded-card border border-dashed border-border-soft py-12 text-center">
+                  <p className="font-semibold text-fg">
+                    No professionals found
+                  </p>
+                  <p className="mt-1 text-[13px] text-fg-muted">
+                    Try a different search or adjust your filters.
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Check, Sparkles, Wallet } from "lucide-react";
@@ -25,7 +25,27 @@ const CONFETTI_COLORS = [
 
 export default function SessionCompletePage() {
   const { id } = useParams<{ id: string }>();
-  const { cohorts, studentBookings } = useApp();
+  const { cohorts, studentBookings, endCohort } = useApp();
+
+  // Settle the session server-side: 1:1 bookings are marked completed and
+  // cohorts ended (owner only), releasing escrow to the professional either
+  // way. Fire-and-forget and idempotent; when the server confirms a cohort
+  // ended we mirror it locally so the Live Now rail clears immediately.
+  useEffect(() => {
+    if (!isSupabaseEnabled || !id) return;
+    void fetch("/api/sessions/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bookingId: id }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { status?: string } | null) => {
+        if (data?.status === "ended") endCohort(id);
+      })
+      .catch(() => {
+        // Settled lazily on a later visit — the screen still renders.
+      });
+  }, [id, endCohort]);
 
   // Summarise the real session that just ended; the mock seed only backs the
   // stub preview when no backend is configured.

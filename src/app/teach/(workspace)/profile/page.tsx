@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { ProgressBar } from "@/components/ui/progress";
+import { Skeleton, SkeletonRow } from "@/components/ui/skeleton";
 import { currentTeacher } from "@/lib/mock";
 import { isSupabaseEnabled } from "@/lib/services/config";
 import { useApp } from "@/lib/store/app-provider";
@@ -95,7 +96,7 @@ const menu: { heading: string; items: MenuItem[] }[] = [
 ];
 
 export default function TeacherProfilePage() {
-  const { teacherWallet, signOut, profileName } = useApp();
+  const { teacherWallet, signOut, profileName, hydrated } = useApp();
   const level = tpLevel(teacherWallet.tpBalance);
   const displayName =
     profileName ?? (isSupabaseEnabled ? "Professional" : currentTeacher.name);
@@ -109,66 +110,77 @@ export default function TeacherProfilePage() {
       </header>
 
       <div className="space-y-6 px-5 pt-2">
-        <div className="flex items-center gap-4 rounded-card border border-border bg-surface p-4">
-          <Avatar name={displayName} size="xl" ring />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <p className="truncate font-display text-xl font-bold text-fg">
-                {displayName}
-              </p>
-              <BadgeCheck className="size-5 shrink-0 fill-primary text-white" />
+        {!hydrated ? (
+          <>
+            <div className="rounded-card border border-border bg-surface p-4">
+              <SkeletonRow className="py-0" />
             </div>
-            <p className="text-[13px] text-fg-muted">
-              Professional · Mathematics &amp; Physics
-            </p>
-            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-semibold text-success-bright">
-              <BadgeCheck className="size-3.5" />
-              Verified professional
-            </span>
-          </div>
-        </div>
+            <Skeleton className="h-28 rounded-card" />
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-4 rounded-card border border-border bg-surface p-4">
+              <Avatar name={displayName} size="xl" ring />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <p className="truncate font-display text-xl font-bold text-fg">
+                    {displayName}
+                  </p>
+                  <BadgeCheck className="size-5 shrink-0 fill-primary text-white" />
+                </div>
+                <p className="text-[13px] text-fg-muted">
+                  Professional · Mathematics &amp; Physics
+                </p>
+                <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-semibold text-success-bright">
+                  <BadgeCheck className="size-3.5" />
+                  Verified professional
+                </span>
+              </div>
+            </div>
 
-        <div className="rounded-card border border-gold/25 bg-gold/10 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-[13px] text-fg-muted">
-              Professional Points level
-            </p>
-            <span className="rounded-full bg-gold/20 px-2.5 py-1 text-[11px] font-bold text-gold">
-              {level.name}
-            </span>
-          </div>
-          <p className="mt-1 font-display text-xl font-bold text-fg">
-            {formatTP(teacherWallet.tpBalance)}
-          </p>
-          <ProgressBar
-            value={level.progress * 100}
-            className="bg-gold"
-            trackClassName="mt-3 bg-surface-2"
-          />
-          <p className="mt-1.5 text-[12px] text-fg-muted">
-            {level.nextAt
-              ? `${formatTP(level.nextAt - teacherWallet.tpBalance)} to the next level`
-              : "Top level reached — Platinum professional"}
-          </p>
-        </div>
+            <div className="rounded-card border border-gold/25 bg-gold/10 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[13px] text-fg-muted">
+                  Professional Points level
+                </p>
+                <span className="rounded-full bg-gold/20 px-2.5 py-1 text-[11px] font-bold text-gold">
+                  {level.name}
+                </span>
+              </div>
+              <p className="mt-1 font-display text-xl font-bold text-fg">
+                {formatTP(teacherWallet.tpBalance)}
+              </p>
+              <ProgressBar
+                value={level.progress * 100}
+                className="bg-gold"
+                trackClassName="mt-3 bg-surface-2"
+              />
+              <p className="mt-1.5 text-[12px] text-fg-muted">
+                {level.nextAt
+                  ? `${formatTP(level.nextAt - teacherWallet.tpBalance)} to the next level`
+                  : "Top level reached — Platinum professional"}
+              </p>
+            </div>
 
-        <div className="grid grid-cols-3 overflow-hidden rounded-card border border-border bg-surface text-center">
-          <Stat
-            label="Rating"
-            value="4.9"
-            icon={<Star className="size-3.5 fill-gold text-gold" />}
-          />
-          <Stat
-            label="Points"
-            value={formatTP(teacherWallet.tpBalance)}
-            divided
-          />
-          <Stat
-            label="Lifetime"
-            value={`₦${formatCompact(teacherWallet.lifetimeEarnings)}`}
-            divided
-          />
-        </div>
+            <div className="grid grid-cols-3 overflow-hidden rounded-card border border-border bg-surface text-center">
+              <Stat
+                label="Rating"
+                value="4.9"
+                icon={<Star className="size-3.5 fill-gold text-gold" />}
+              />
+              <Stat
+                label="Points"
+                value={formatTP(teacherWallet.tpBalance)}
+                divided
+              />
+              <Stat
+                label="Lifetime"
+                value={`₦${formatCompact(teacherWallet.lifetimeEarnings)}`}
+                divided
+              />
+            </div>
+          </>
+        )}
 
         {menu.map((group) => (
           <div key={group.heading}>

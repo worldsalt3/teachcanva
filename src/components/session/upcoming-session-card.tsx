@@ -11,8 +11,6 @@ import { useApp } from "@/lib/store/app-provider";
 import { cn, formatNaira } from "@/lib/utils";
 import type { Session } from "@/lib/mock";
 
-const LIVE_HREF = "/live/live-advanced-calculus?as=student";
-
 /** Upcoming session row for the student Home screen. */
 export function UpcomingSessionCard({
   session,
@@ -44,7 +42,7 @@ export function UpcomingSessionCard({
         </p>
       </div>
       {accent ? (
-        <Link href={LIVE_HREF}>
+        <Link href={`/live/${session.id}?as=student`}>
           <Button size="sm">Join</Button>
         </Link>
       ) : (

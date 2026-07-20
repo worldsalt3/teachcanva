@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -40,6 +41,10 @@ import { getSessionUser, signOutBackend } from "@/lib/services/auth";
 import {
   applyWalletTransaction,
   fetchBookings,
+  fetchTeacherBookings,
+  fetchMyTeacherListing,
+  subscribeTeacherBookings,
+  updateBookingStatus,
   fetchCohortEnrolments,
   fetchCohortSessions,
   fetchOwnedSlides,
@@ -98,12 +103,14 @@ const seedNotifications: AppNotification[] = [
 interface PersistShape {
   authenticated: boolean;
   userId: string | null;
+  userEmail: string | null;
   profileName: string | null;
   role: Role;
   teachers: Teacher[];
   studentWallet: WalletAccount;
   teacherWallet: WalletAccount;
   studentBookings: Session[];
+  teacherBookings: Session[];
   cohorts: CohortSession[];
   cohortEnrolments: Record<string, "enrolled" | "waitlisted">;
   notifications: AppNotification[];
@@ -131,12 +138,14 @@ function initialState(): PersistShape {
     return {
       authenticated: false,
       userId: null,
+      userEmail: null,
       profileName: null,
       role: "student",
       teachers: [],
       studentWallet: emptyWallet(),
       teacherWallet: emptyWallet(),
       studentBookings: [],
+      teacherBookings: [],
       cohorts: [],
       cohortEnrolments: {},
       notifications: [],
@@ -149,12 +158,14 @@ function initialState(): PersistShape {
     // app is instantly explorable; logging out gates behind the login flow.
     authenticated: true,
     userId: null,
+    userEmail: null,
     profileName: null,
     role: "student",
     teachers: structuredClone(seedTeachers),
     studentWallet: structuredClone(seedStudentWallet),
     teacherWallet: structuredClone(seedTeacherWallet),
     studentBookings: structuredClone(studentUpcoming),
+    teacherBookings: [],
     cohorts: structuredClone(seedCohorts),
     cohortEnrolments: {},
     notifications: structuredClone(seedNotifications),
@@ -181,6 +192,7 @@ interface AppContextValue extends PersistShape {
   enrolInCohort: (id: string) => EnrolResult;
   createCohortSession: (draft: CohortDraft) => CohortSession;
   startCohort: (id: string) => void;
+  endCohort: (id: string) => void;
   notifyGoLive: (topic: string, sessionId?: string) => void;
   // notifications
   markNotificationRead: (id: string) => void;
@@ -214,6 +226,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [state, setState] = useState<PersistShape>(initialState);
   const [hydrated, setHydrated] = useState(false);
+  const bookingsUnsubRef = useRef<(() => void) | null>(null);
+
+  /**
+   * Live-refreshes the professional's schedule: subscribes to booking
+   * inserts/updates addressed to their listing and refetches on each event.
+   * New bookings also surface as a notification. No-op without a listing.
+   */
+  const watchTeacherBookings = useCallback(async () => {
+    bookingsUnsubRef.current?.();
+    bookingsUnsubRef.current = null;
+    const listing = await fetchMyTeacherListing();
+    if (!listing) return;
+    bookingsUnsubRef.current = subscribeTeacherBookings(
+      listing.id,
+      (kind, session) => {
+        void fetchTeacherBookings().then((teacherBookings) => {
+          setState((s) => ({ ...s, teacherBookings }));
+        });
+        if (kind === "insert" && session) {
+          const note: AppNotification = {
+            id: `n-${Date.now()}`,
+            title: "New session booked",
+            body: `${session.counterpartName} booked ${session.topic} — ${session.dateLabel} · ${session.timeLabel}.`,
+            time: "Just now",
+            kind: "session",
+            read: false,
+            href: "/teach/schedule",
+          };
+          setState((s) => ({
+            ...s,
+            notifications: [note, ...s.notifications],
+          }));
+        }
+      },
+    );
+  }, []);
 
   // Loads everything from the backend for the current session. Used on mount
   // and again right after sign-in/sign-up so fresh sessions get their data.
@@ -222,6 +270,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!user) return false;
     const [
       bookings,
+      teacherBookings,
       slides,
       studentW,
       teacherW,
@@ -230,6 +279,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       enrolments,
     ] = await Promise.all([
       fetchBookings(),
+      fetchTeacherBookings(),
       fetchOwnedSlides(),
       fetchWallet("student"),
       fetchWallet("teacher"),
@@ -241,9 +291,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...s,
       authenticated: true,
       userId: user.id,
+      userEmail: user.email || null,
       profileName: user.name ?? s.profileName,
       role: user.role,
       studentBookings: bookings,
+      teacherBookings,
       slides,
       studentWallet: studentW ?? emptyWallet(),
       teacherWallet: teacherW ?? emptyWallet(),
@@ -251,8 +303,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       cohorts,
       cohortEnrolments: enrolments,
     }));
+    void watchTeacherBookings();
     return true;
-  }, []);
+  }, [watchTeacherBookings]);
 
   // Load persisted state after mount to keep SSR output deterministic. With
   // Supabase configured we hydrate from the backend (auth gates the shells);
@@ -271,6 +324,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       })();
       return () => {
         cancelled = true;
+        bookingsUnsubRef.current?.();
+        bookingsUnsubRef.current = null;
       };
     }
 
@@ -309,6 +364,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseEnabled) {
       void signOutBackend();
     }
+    bookingsUnsubRef.current?.();
+    bookingsUnsubRef.current = null;
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -328,8 +385,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const createBooking = useCallback((draft: BookingDraft): Session => {
     let booking!: Session;
+    let learnerName = "";
 
     setState((s) => {
+      learnerName = s.profileName ?? "";
       const teacher =
         s.teachers.find((t) => t.id === draft.teacherId) ??
         (isSupabaseEnabled ? undefined : getTeacher(draft.teacherId));
@@ -384,11 +443,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       void insertBooking({
         teacherId: UUID_RE.test(draft.teacherId) ? draft.teacherId : null,
         counterpartName: booking.counterpartName,
+        studentName: learnerName,
         subject: booking.subject,
         topic: booking.topic,
         dateLabel: booking.dateLabel,
         timeLabel: booking.timeLabel,
         durationMins: booking.durationMins,
+        amount: draft.amount,
       });
       if (draft.payWith === "wallet") {
         void applyWalletTransaction("student", {
@@ -411,9 +472,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const cancelBooking = useCallback((id: string) => {
     let refunded = 0;
     let cancelledTopic = "";
+    let didCancel = false;
     setState((s) => {
       const booking = s.studentBookings.find((b) => b.id === id);
       if (!booking || booking.status !== "upcoming") return s;
+      didCancel = true;
       refunded = booking.amount ?? 0;
       cancelledTopic = booking.topic;
 
@@ -453,14 +516,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
 
-    if (isSupabaseEnabled && refunded > 0) {
-      void applyWalletTransaction("student", {
-        title: `Refund — ${cancelledTopic}`,
-        subtitle: `Cancelled • ${ledgerDate()}`,
-        amount: refunded,
-        direction: "in",
-        status: "completed",
-      });
+    if (isSupabaseEnabled && didCancel) {
+      void updateBookingStatus(
+        id,
+        "cancelled",
+        refunded > 0 ? "refunded" : undefined,
+      );
+      if (refunded > 0) {
+        void applyWalletTransaction("student", {
+          title: `Refund — ${cancelledTopic}`,
+          subtitle: `Cancelled • ${ledgerDate()}`,
+          amount: refunded,
+          direction: "in",
+          status: "completed",
+        });
+      }
     }
   }, []);
 
@@ -635,6 +705,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseEnabled) {
       void setCohortStatus(id, "live");
     }
+  }, []);
+
+  /**
+   * Marks a cohort ended in local state. The server settles the real thing
+   * (status + escrow release) via /api/sessions/complete; this just clears
+   * the Live Now rail immediately.
+   */
+  const endCohort = useCallback((id: string) => {
+    setState((s) => ({
+      ...s,
+      cohorts: s.cohorts.map((c) =>
+        c.id === id ? { ...c, status: "ended" as const } : c,
+      ),
+    }));
   }, []);
 
   /** 'Go Live' alert pushed to followers when a professional starts (FR-N03). */
@@ -825,6 +909,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       enrolInCohort,
       createCohortSession,
       startCohort,
+      endCohort,
       notifyGoLive,
       markNotificationRead,
       markAllNotificationsRead,
@@ -847,6 +932,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     enrolInCohort,
     createCohortSession,
     startCohort,
+    endCohort,
     notifyGoLive,
     markNotificationRead,
     markAllNotificationsRead,
