@@ -3,9 +3,111 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { clientKey, rateLimit } from "@/lib/services/rate-limit";
 
+type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
+
+/** Credits a professional's teacher wallet (balance + lifetime + ledger). */
+async function creditTeacherWallet(
+  admin: Admin,
+  profileId: string,
+  amount: number,
+  title: string,
+  reference: string,
+): Promise<number> {
+  const { data: wallet } = await admin
+    .from("wallets")
+    .select("id, balance, lifetime_earnings")
+    .eq("owner_id", profileId)
+    .eq("role", "teacher")
+    .maybeSingle();
+  if (!wallet) return 0;
+  await admin
+    .from("wallets")
+    .update({
+      balance: Number(wallet.balance) + amount,
+      lifetime_earnings: Number(wallet.lifetime_earnings) + amount,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", wallet.id);
+  await admin.from("wallet_transactions").insert({
+    wallet_id: wallet.id,
+    title,
+    subtitle: "Escrow released on completion",
+    amount,
+    direction: "in",
+    status: "completed",
+    reference,
+  });
+  return amount;
+}
+
+/**
+ * Settles a cohort session: only the owner ending it flips the status to
+ * `ended`, releases every held enrolment escrow, and credits the total to
+ * the professional's wallet. Learners hitting this route are a no-op.
+ * Idempotent: an already-ended cohort releases nothing.
+ */
+async function completeCohort(
+  admin: Admin,
+  userId: string,
+  cohortId: string,
+): Promise<NextResponse> {
+  const { data: cohort } = await admin
+    .from("cohort_sessions")
+    .select("id, owner_id, title, status")
+    .eq("id", cohortId)
+    .maybeSingle();
+  if (!cohort) {
+    return NextResponse.json({ error: "Session not found." }, { status: 404 });
+  }
+  if (cohort.owner_id !== userId || cohort.status === "ended") {
+    return NextResponse.json({
+      bookingId: cohortId,
+      status: cohort.status,
+      released: 0,
+    });
+  }
+
+  const { data: enrolments } = await admin
+    .from("cohort_enrolments")
+    .select("amount_paid")
+    .eq("cohort_id", cohortId)
+    .eq("status", "enrolled")
+    .eq("escrow_status", "held");
+  const total = (enrolments ?? []).reduce(
+    (sum, e) => sum + Number(e.amount_paid ?? 0),
+    0,
+  );
+
+  await admin
+    .from("cohort_sessions")
+    .update({ status: "ended" })
+    .eq("id", cohortId);
+  if (enrolments?.length) {
+    await admin
+      .from("cohort_enrolments")
+      .update({ escrow_status: "released" })
+      .eq("cohort_id", cohortId)
+      .eq("status", "enrolled")
+      .eq("escrow_status", "held");
+  }
+
+  let released = 0;
+  if (total > 0) {
+    released = await creditTeacherWallet(
+      admin,
+      cohort.owner_id,
+      total,
+      `Cohort earnings — ${cohort.title || "Live session"}`,
+      `COHORT-${cohortId}`,
+    );
+  }
+  return NextResponse.json({ bookingId: cohortId, status: "ended", released });
+}
+
 /**
  * Marks a 1:1 booking as completed and releases its escrow to the
  * professional's wallet (balance + lifetime earnings + ledger entry).
+ * Ids that match a cohort session instead settle the cohort (owner only).
  *
  * Callable by either party of the booking (the learner who owns it or the
  * professional it is addressed to). Idempotent: a booking that is already
@@ -51,7 +153,8 @@ export async function POST(request: Request) {
     .eq("id", bookingId)
     .maybeSingle();
   if (!booking) {
-    return NextResponse.json({ error: "Booking not found." }, { status: 404 });
+    // Not a 1:1 booking — cohort live sessions settle here too.
+    return completeCohort(admin, user.id, bookingId);
   }
 
   // Caller must be a party to the booking.
@@ -94,32 +197,13 @@ export async function POST(request: Request) {
   // Release escrow to the professional's wallet.
   let released = 0;
   if (shouldRelease && teacherProfileId) {
-    const { data: wallet } = await admin
-      .from("wallets")
-      .select("id, balance, lifetime_earnings")
-      .eq("owner_id", teacherProfileId)
-      .eq("role", "teacher")
-      .maybeSingle();
-    if (wallet) {
-      await admin
-        .from("wallets")
-        .update({
-          balance: Number(wallet.balance) + amount,
-          lifetime_earnings: Number(wallet.lifetime_earnings) + amount,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", wallet.id);
-      await admin.from("wallet_transactions").insert({
-        wallet_id: wallet.id,
-        title: `Session earnings — ${booking.topic || "Live session"}`,
-        subtitle: "Escrow released on completion",
-        amount,
-        direction: "in",
-        status: "completed",
-        reference: `ESCROW-${bookingId}`,
-      });
-      released = amount;
-    }
+    released = await creditTeacherWallet(
+      admin,
+      teacherProfileId,
+      amount,
+      `Session earnings — ${booking.topic || "Live session"}`,
+      `ESCROW-${bookingId}`,
+    );
   }
 
   return NextResponse.json({ bookingId, status: "completed", released });

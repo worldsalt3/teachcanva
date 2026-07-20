@@ -217,6 +217,54 @@ export async function updateBookingStatus(
   return !error;
 }
 
+/**
+ * Streams booking changes addressed to the given professional listing so the
+ * schedule refreshes without a reload. Inserts include the mapped session
+ * (for a "new booking" notification); updates just signal a refetch.
+ * Returns an unsubscribe fn.
+ */
+export function subscribeTeacherBookings(
+  listingId: string,
+  onChange: (kind: "insert" | "update", session?: Session) => void,
+): () => void {
+  const supabase = createClient();
+  if (!supabase) return () => {};
+
+  const channel = supabase
+    .channel(`bookings:${listingId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "bookings",
+        filter: `teacher_id=eq.${listingId}`,
+      },
+      (payload: { new: BookingRow }) => {
+        const r = payload.new;
+        onChange("insert", {
+          ...toSession(r),
+          counterpartName: r.student_name || "Learner",
+        });
+      },
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "bookings",
+        filter: `teacher_id=eq.${listingId}`,
+      },
+      () => onChange("update"),
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
 // ─── slides ──────────────────────────────────────────────────────────────────
 interface SlideRow {
   id: string;

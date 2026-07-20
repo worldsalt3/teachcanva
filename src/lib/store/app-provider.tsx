@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -41,6 +42,8 @@ import {
   applyWalletTransaction,
   fetchBookings,
   fetchTeacherBookings,
+  fetchMyTeacherListing,
+  subscribeTeacherBookings,
   updateBookingStatus,
   fetchCohortEnrolments,
   fetchCohortSessions,
@@ -189,6 +192,7 @@ interface AppContextValue extends PersistShape {
   enrolInCohort: (id: string) => EnrolResult;
   createCohortSession: (draft: CohortDraft) => CohortSession;
   startCohort: (id: string) => void;
+  endCohort: (id: string) => void;
   notifyGoLive: (topic: string, sessionId?: string) => void;
   // notifications
   markNotificationRead: (id: string) => void;
@@ -222,6 +226,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [state, setState] = useState<PersistShape>(initialState);
   const [hydrated, setHydrated] = useState(false);
+  const bookingsUnsubRef = useRef<(() => void) | null>(null);
+
+  /**
+   * Live-refreshes the professional's schedule: subscribes to booking
+   * inserts/updates addressed to their listing and refetches on each event.
+   * New bookings also surface as a notification. No-op without a listing.
+   */
+  const watchTeacherBookings = useCallback(async () => {
+    bookingsUnsubRef.current?.();
+    bookingsUnsubRef.current = null;
+    const listing = await fetchMyTeacherListing();
+    if (!listing) return;
+    bookingsUnsubRef.current = subscribeTeacherBookings(
+      listing.id,
+      (kind, session) => {
+        void fetchTeacherBookings().then((teacherBookings) => {
+          setState((s) => ({ ...s, teacherBookings }));
+        });
+        if (kind === "insert" && session) {
+          const note: AppNotification = {
+            id: `n-${Date.now()}`,
+            title: "New session booked",
+            body: `${session.counterpartName} booked ${session.topic} — ${session.dateLabel} · ${session.timeLabel}.`,
+            time: "Just now",
+            kind: "session",
+            read: false,
+            href: "/teach/schedule",
+          };
+          setState((s) => ({
+            ...s,
+            notifications: [note, ...s.notifications],
+          }));
+        }
+      },
+    );
+  }, []);
 
   // Loads everything from the backend for the current session. Used on mount
   // and again right after sign-in/sign-up so fresh sessions get their data.
@@ -263,8 +303,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       cohorts,
       cohortEnrolments: enrolments,
     }));
+    void watchTeacherBookings();
     return true;
-  }, []);
+  }, [watchTeacherBookings]);
 
   // Load persisted state after mount to keep SSR output deterministic. With
   // Supabase configured we hydrate from the backend (auth gates the shells);
@@ -283,6 +324,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       })();
       return () => {
         cancelled = true;
+        bookingsUnsubRef.current?.();
+        bookingsUnsubRef.current = null;
       };
     }
 
@@ -321,6 +364,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseEnabled) {
       void signOutBackend();
     }
+    bookingsUnsubRef.current?.();
+    bookingsUnsubRef.current = null;
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -662,6 +707,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  /**
+   * Marks a cohort ended in local state. The server settles the real thing
+   * (status + escrow release) via /api/sessions/complete; this just clears
+   * the Live Now rail immediately.
+   */
+  const endCohort = useCallback((id: string) => {
+    setState((s) => ({
+      ...s,
+      cohorts: s.cohorts.map((c) =>
+        c.id === id ? { ...c, status: "ended" as const } : c,
+      ),
+    }));
+  }, []);
+
   /** 'Go Live' alert pushed to followers when a professional starts (FR-N03). */
   const notifyGoLive = useCallback((topic: string, sessionId?: string) => {
     setState((s) => {
@@ -850,6 +909,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       enrolInCohort,
       createCohortSession,
       startCohort,
+      endCohort,
       notifyGoLive,
       markNotificationRead,
       markAllNotificationsRead,
@@ -872,6 +932,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     enrolInCohort,
     createCohortSession,
     startCohort,
+    endCohort,
     notifyGoLive,
     markNotificationRead,
     markAllNotificationsRead,
