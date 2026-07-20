@@ -82,7 +82,7 @@ export default function LandingPage() {
 
       {/* ── Hero ── */}
       <div className="mx-auto grid w-full max-w-5xl items-center gap-10 px-6 pt-14 md:grid-cols-[1.1fr_1fr] md:gap-12 lg:gap-16 lg:px-8 lg:pt-24">
-        <section>
+        <section className="fade-up">
           <h1 className="font-display text-[2.1rem] font-bold leading-[1.15] tracking-tight md:text-4xl lg:text-[2.9rem] lg:leading-[1.1]">
             Learn{" "}
             <span className="relative inline-block">
@@ -129,9 +129,9 @@ export default function LandingPage() {
           </p>
         </section>
 
-        {/* ── Hero visual: live session mock ── */}
-        <section>
-          <div className="mx-auto max-w-md overflow-hidden rounded-2xl bg-surface shadow-xl shadow-ink/15 md:mx-0 md:max-w-none">
+        {/* ── Hero visual: a real live session ── */}
+        <section className="fade-up [animation-delay:0.15s]">
+          <div className="float-slow mx-auto max-w-md overflow-hidden rounded-2xl bg-surface shadow-xl shadow-ink/15 md:mx-0 md:max-w-none">
             <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
               <div className="flex items-center gap-2.5">
                 <span className="grid size-9 place-items-center rounded-full bg-primary/25 font-display text-sm font-bold text-primary-soft">
@@ -149,57 +149,29 @@ export default function LandingPage() {
                 LIVE
               </span>
             </div>
-            <div className="relative h-44 bg-[#0b1020]">
-              <svg
-                viewBox="0 0 320 160"
-                className="absolute inset-0 h-full w-full"
+            <div className="relative h-48 bg-[#0b1020] md:h-60">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/landing/board-live.jpg"
+                alt="Handwritten calculus worked live on the TeachCanvas board"
+                className="absolute inset-0 h-full w-full object-cover object-top"
+                loading="eager"
+              />
+              <div
+                className="absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-ink/45 to-transparent"
                 aria-hidden
-              >
-                {/* faint grid */}
-                <path
-                  d="M0 40 H320 M0 80 H320 M0 120 H320 M80 0 V160 M160 0 V160 M240 0 V160"
-                  stroke="rgba(255,255,255,0.05)"
-                  strokeWidth="1"
-                />
-                {/* curve */}
-                <path
-                  d="M24 118 C 80 40, 128 132, 176 66 S 268 96, 300 38"
-                  stroke="#7da2ff"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  fill="none"
-                />
-                {/* tangent at the highlighted point */}
-                <path
-                  d="M136 96 L 216 36"
-                  stroke="#14b8a6"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeDasharray="1 6"
-                />
-                <circle cx="176" cy="66" r="5" fill="#f5b417" />
-                <text
-                  x="206"
-                  y="122"
-                  fill="#f5b417"
-                  fontSize="13"
-                  fontStyle="italic"
-                  fontFamily="Georgia, serif"
-                >
-                  f′(x) = 2x
-                </text>
-              </svg>
-              <span className="absolute left-3 top-3 rounded-md bg-white/10 px-2 py-1 text-[10px] font-semibold tracking-wide text-white/60 backdrop-blur">
-                SLIDE 3 · DERIVATIVES
+              />
+              <span className="absolute left-3 top-3 rounded-md bg-ink/80 px-2 py-1 text-[10px] font-semibold tracking-wide text-white/85 backdrop-blur-sm">
+                SLIDE 5 · INTEGRALS
               </span>
-              <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white/75 backdrop-blur">
+              <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-ink/80 px-2.5 py-1 text-[11px] font-semibold text-white/90 backdrop-blur-sm">
                 <UsersRound className="size-3 text-primary-soft" /> 132 learners
               </span>
-              <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white/75 backdrop-blur">
+              <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-ink/80 px-2.5 py-1 text-[11px] font-semibold text-white/90 backdrop-blur-sm">
                 <PenLine className="size-3 text-[#2dd4bf]" /> Canvas synced in
                 real time
               </span>
-              <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1.5 backdrop-blur">
+              <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-ink/80 px-2.5 py-1.5 backdrop-blur-sm">
                 <span className="size-2.5 rounded-full bg-[#7da2ff] ring-2 ring-white/30" />
                 <span className="size-2.5 rounded-full bg-teal" />
                 <span className="size-2.5 rounded-full bg-gold" />
@@ -215,7 +187,7 @@ export default function LandingPage() {
             </div>
           </div>
           <p className="mx-auto mt-3 max-w-md text-center text-[12px] text-ink-soft/70 md:mx-0 md:text-left">
-            A live session on the canvas: annotate, chat, replay.
+            A real session on the canvas — annotate, chat, replay.
           </p>
         </section>
       </div>
@@ -279,42 +251,96 @@ export default function LandingPage() {
           <h2 className="font-display text-2xl font-bold tracking-tight lg:text-3xl">
             The details we sweat
           </h2>
-          <div className="mt-8 grid gap-x-12 md:grid-cols-2">
-            <Detail
-              icon={<PenLine className="size-4.5" />}
-              title="Live canvas"
-              desc="Every stroke syncs in under a second, over slides, photos, even video."
+          <div className="mt-8 grid items-start gap-10 md:grid-cols-[1fr_250px] md:gap-12 lg:grid-cols-[1fr_290px]">
+            <div className="grid gap-x-12 lg:grid-cols-2">
+              <Detail
+                icon={<PenLine className="size-4.5" />}
+                title="Live canvas"
+                desc="Every stroke syncs in under a second, over slides, photos, even video."
+              />
+              <Detail
+                icon={<LockKeyhole className="size-4.5" />}
+                title="Escrow wallet"
+                desc="Cancel before class and the refund is instant. No chasing anyone."
+              />
+              <Detail
+                icon={<PlayCircle className="size-4.5" />}
+                title="Replays"
+                desc="Completed sessions are yours to rewatch, chaptered by slide."
+              />
+              <Detail
+                icon={<UsersRound className="size-4.5" />}
+                title="Cohorts"
+                desc="Seat-limited group sessions, with waitlists when they fill."
+              />
+              <Detail
+                icon={<Sparkles className="size-4.5" />}
+                title="Learning Points"
+                desc="A track record you earn by showing up, session after session."
+              />
+              <Detail
+                icon={<CalendarCheck className="size-4.5" />}
+                title="Real availability"
+                desc="Professionals set their own days, so you only see times that exist."
+              />
+            </div>
+            <div className="mx-auto w-full max-w-70 md:mx-0 md:max-w-none">
+              <div className="overflow-hidden rounded-2xl bg-[#05070e] shadow-xl shadow-ink/15 ring-1 ring-ink/10">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/landing/screen-home.jpg"
+                  alt="The TeachCanvas learner home screen with live and upcoming sessions"
+                  className="aspect-9/16 w-full object-cover object-top"
+                  loading="lazy"
+                />
+              </div>
+              <p className="mt-3 text-center text-[12px] text-ink-soft/70">
+                The learner home: live now, upcoming, replays.
+              </p>
+            </div>
+          </div>
+          <p className="mt-10 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-soft/60">
+            Popular right now
+          </p>
+          <div className="group relative mt-3 -mx-6 overflow-x-hidden lg:-mx-8">
+            <div className="marquee flex w-max group-hover:[animation-play-state:paused] group-active:[animation-play-state:paused]">
+              {[0, 1].map((copy) => (
+                <div
+                  key={copy}
+                  aria-hidden={copy === 1}
+                  className="flex shrink-0 items-center gap-2.5 pl-6 lg:pl-8"
+                >
+                  {[
+                    "Coding",
+                    "Data",
+                    "Fintech",
+                    "Design",
+                    "Law",
+                    "Product",
+                    "Public speaking",
+                    "Exam prep",
+                    "Music theory",
+                    "Career coaching",
+                  ].map((topic) => (
+                    <span
+                      key={topic}
+                      className="whitespace-nowrap rounded-full border border-ink/10 bg-[#f7f8fb] px-3.5 py-1.5 text-[13px] font-medium text-ink-soft"
+                    >
+                      {topic}
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div
+              className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-linear-to-r from-white to-transparent"
+              aria-hidden
             />
-            <Detail
-              icon={<LockKeyhole className="size-4.5" />}
-              title="Escrow wallet"
-              desc="Cancel before class and the refund is instant. No chasing anyone."
-            />
-            <Detail
-              icon={<PlayCircle className="size-4.5" />}
-              title="Replays"
-              desc="Completed sessions are yours to rewatch, chaptered by slide."
-            />
-            <Detail
-              icon={<UsersRound className="size-4.5" />}
-              title="Cohorts"
-              desc="Seat-limited group sessions, with waitlists when they fill."
-            />
-            <Detail
-              icon={<Sparkles className="size-4.5" />}
-              title="Learning Points"
-              desc="A track record you earn by showing up, session after session."
-            />
-            <Detail
-              icon={<CalendarCheck className="size-4.5" />}
-              title="Real availability"
-              desc="Professionals set their own days, so you only see times that exist."
+            <div
+              className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-linear-to-l from-white to-transparent"
+              aria-hidden
             />
           </div>
-          <p className="mt-8 text-[13px] text-ink-soft/80">
-            Popular right now: coding, data, fintech, design, law, product,
-            public speaking.
-          </p>
         </div>
       </section>
 
@@ -358,19 +384,21 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <div className="mt-7 rounded-xl bg-white/6 p-4">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-[12px] text-white/50">This month</span>
-                  <span className="font-display text-lg font-bold text-white">
-                    ₦182,500
-                  </span>
-                </div>
-                <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3 text-[12px]">
-                  <span className="text-white/50">Payout · GTBank ••4218</span>
-                  <span className="inline-flex items-center gap-1 font-semibold text-[#4ade80]">
-                    <Check className="size-3" /> Sent
-                  </span>
-                </div>
+              <div className="relative mx-auto mt-7 w-full max-w-xs overflow-hidden rounded-xl ring-1 ring-white/10 lg:mx-0 lg:max-w-none">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/landing/screen-golive.jpg"
+                  alt="The TeachCanvas professional dashboard with the Go Live Now card"
+                  className="aspect-4/5 w-full object-cover object-top"
+                  loading="lazy"
+                />
+                <div
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-ink to-transparent"
+                  aria-hidden
+                />
+                <span className="absolute bottom-3 left-3 text-[12px] font-semibold text-white/80">
+                  Your dashboard — go live in one tap.
+                </span>
               </div>
             </div>
           </div>
