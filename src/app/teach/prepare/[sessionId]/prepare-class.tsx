@@ -18,6 +18,7 @@ import { useApp } from "@/lib/store/app-provider";
 import type { Slide, SlideKind } from "@/lib/services/types";
 import { isSupabaseEnabled } from "@/lib/services/config";
 import { uploadSlideMedia } from "@/lib/services/storage";
+import { PhotoEditorSheet } from "./photo-editor";
 
 function blankSlide(kind: SlideKind = "text"): Slide {
   return {
@@ -30,38 +31,8 @@ function blankSlide(kind: SlideKind = "text"): Slide {
 
 // Downscale a picked photo to a JPEG blob (longest edge <= 1400px) so it's
 // cheap to upload/store, whether it goes to Supabase Storage or a data URL.
-function downscaleImageToBlob(file: File): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const MAX = 1400;
-      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-      const width = Math.round(img.width * scale);
-      const height = Math.round(img.height * scale);
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      URL.revokeObjectURL(objectUrl);
-      if (!ctx) {
-        reject(new Error("no-2d-context"));
-        return;
-      }
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        (blob) => (blob ? resolve(blob) : reject(new Error("encode-failed"))),
-        "image/jpeg",
-        0.82,
-      );
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error("image-load-failed"));
-    };
-    img.src = objectUrl;
-  });
-}
+// (Photo slides now flow through PhotoEditorSheet, which renders the framed
+// crop at the same cap/quality.)
 
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -87,6 +58,8 @@ export function PrepareClass({
   const [slides, setSlides] = useState<Slide[]>(stored ?? []);
   const [seeded, setSeeded] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // Object URL of a freshly picked photo being cropped/rotated.
+  const [editingSrc, setEditingSrc] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -105,12 +78,22 @@ export function PrepareClass({
 
   const addText = () => setSlides((s) => [...s, blankSlide("text")]);
 
-  const onImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    // Open the crop/rotate editor first; the slide is added on "Use photo".
+    setEditingSrc(URL.createObjectURL(file));
+  };
+
+  const closeEditor = () => {
+    if (editingSrc) URL.revokeObjectURL(editingSrc);
+    setEditingSrc(null);
+  };
+
+  const onEditedPhoto = async (blob: Blob) => {
+    closeEditor();
     try {
-      const blob = await downscaleImageToBlob(file);
       const uploaded = isSupabaseEnabled
         ? await uploadSlideMedia(blob, sessionId, "jpg")
         : null;
@@ -353,6 +336,14 @@ export function PrepareClass({
         hidden
         onChange={onVideoFile}
       />
+
+      {editingSrc && (
+        <PhotoEditorSheet
+          src={editingSrc}
+          onCancel={closeEditor}
+          onApply={onEditedPhoto}
+        />
+      )}
 
       {toast && (
         <div className="pointer-events-none fixed inset-x-0 bottom-28 z-40 mx-auto flex max-w-110 justify-center px-5">
