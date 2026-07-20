@@ -9,14 +9,13 @@ import {
   Skeleton,
   SkeletonCard,
   SkeletonRail,
-  SkeletonRow,
 } from "@/components/ui/skeleton";
 import { LiveNowCard } from "@/components/session/live-now-card";
 import {
   RecentSessionCard,
   UpcomingSessionCard,
 } from "@/components/session/upcoming-session-card";
-import { TeacherRow } from "@/components/teacher/teacher-card";
+import { TeacherSpotlightCard } from "@/components/teacher/teacher-card";
 import { getLiveNow, recommendedTeacherIds, studentPast } from "@/lib/mock";
 import type { LiveNowItem } from "@/lib/mock";
 import { isSupabaseEnabled } from "@/lib/services/config";
@@ -180,11 +179,7 @@ export default function StudentHomePage() {
               actionLabel="See all"
               actionHref="/explore"
             />
-            <div className="rounded-card border border-border bg-surface px-4">
-              <SkeletonRow />
-              <SkeletonRow />
-              <SkeletonRow />
-            </div>
+            <SkeletonRail />
           </section>
         ) : (
           recommended.length > 0 && (
@@ -194,11 +189,36 @@ export default function StudentHomePage() {
                 actionLabel="See all"
                 actionHref="/explore"
               />
-              <div className="space-y-2.5">
-                {recommended.map((teacher) => (
-                  <TeacherRow key={teacher.id} teacher={teacher} />
-                ))}
-              </div>
+              {/* Auto-scrolling picture rail — pauses while pressed/hovered so
+                  cards stay easy to tap; the sequence is doubled for a
+                  seamless loop. Falls back to a swipeable rail when there are
+                  too few cards to loop nicely. */}
+              {recommended.length >= 3 ? (
+                <div className="group -mx-5 overflow-x-hidden">
+                  <div className="marquee flex w-max group-hover:[animation-play-state:paused] group-active:[animation-play-state:paused]">
+                    {[0, 1].map((copy) => (
+                      <div
+                        key={copy}
+                        aria-hidden={copy === 1}
+                        className="flex shrink-0 gap-3 pr-3"
+                      >
+                        {recommended.map((teacher) => (
+                          <TeacherSpotlightCard
+                            key={`${copy}-${teacher.id}`}
+                            teacher={teacher}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="no-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-1">
+                  {recommended.map((teacher) => (
+                    <TeacherSpotlightCard key={teacher.id} teacher={teacher} />
+                  ))}
+                </div>
+              )}
             </section>
           )
         )}
