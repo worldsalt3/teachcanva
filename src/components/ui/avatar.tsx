@@ -13,17 +13,25 @@ const sizes: Record<Size, string> = {
 
 export interface AvatarProps {
   name: string;
+  /** Profile photo URL — falls back to the initials gradient when unset. */
+  src?: string | null;
   size?: Size;
   className?: string;
   ring?: boolean;
 }
 
-export function Avatar({ name, size = "md", className, ring }: AvatarProps) {
+export function Avatar({
+  name,
+  src,
+  size = "md",
+  className,
+  ring,
+}: AvatarProps) {
   const [from, to] = avatarGradient(name);
   return (
     <span
       className={cn(
-        "inline-grid shrink-0 place-items-center rounded-full font-semibold text-white",
+        "inline-grid shrink-0 place-items-center overflow-hidden rounded-full font-semibold text-white",
         ring && "ring-2 ring-white/15",
         sizes[size],
         className,
@@ -31,7 +39,12 @@ export function Avatar({ name, size = "md", className, ring }: AvatarProps) {
       style={{ backgroundImage: `linear-gradient(135deg, ${from}, ${to})` }}
       aria-hidden
     >
-      {initials(name)}
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" className="size-full object-cover" />
+      ) : (
+        initials(name)
+      )}
     </span>
   );
 }

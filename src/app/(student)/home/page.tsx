@@ -21,6 +21,7 @@ export default function StudentHomePage() {
   const {
     hydrated,
     studentName,
+    profileAvatarUrl,
     studentBookings,
     unreadCount,
     teachers,
@@ -56,7 +57,7 @@ export default function StudentHomePage() {
       <header className="sticky top-0 z-30 bg-canvas/85 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl">
         <div className="flex items-center justify-between gap-3">
           <Link href="/profile" className="tap flex items-center gap-3">
-            <Avatar name={studentName} size="md" ring />
+            <Avatar name={studentName} src={profileAvatarUrl} size="md" ring />
             {hydrated ? (
               <div>
                 <p className="text-[13px] text-fg-muted">Good afternoon</p>

@@ -76,6 +76,30 @@ export async function updateMyAvailability(
   return !error;
 }
 
+/**
+ * Saves an uploaded profile-picture URL on the user's profile and, for
+ * professionals, mirrors it onto their public teachers listing (profiles are
+ * own-read-only, so learner-facing cards read the photo from teachers).
+ */
+export async function saveAvatarUrl(url: string): Promise<boolean> {
+  const supabase = createClient();
+  if (!supabase) return false;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { error } = await supabase
+    .from("profiles")
+    .update({ avatar_url: url })
+    .eq("id", user.id);
+  // Best-effort mirror — no-op when the user has no listing.
+  await supabase
+    .from("teachers")
+    .update({ avatar_url: url })
+    .eq("profile_id", user.id);
+  return !error;
+}
+
 // ─── bookings ────────────────────────────────────────────────────────────────
 interface BookingRow {
   id: string;

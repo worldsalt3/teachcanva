@@ -9,6 +9,7 @@ export interface TeacherRow {
   profile_id: string | null;
   name: string;
   title: string;
+  avatar_url?: string | null;
   subjects: string[];
   rating: number | string;
   review_count: number;
@@ -34,6 +35,7 @@ export function toTeacher(r: TeacherRow): Teacher {
     profileId: r.profile_id ?? undefined,
     name: r.name,
     title: r.title,
+    avatarUrl: r.avatar_url ?? undefined,
     subjects: r.subjects ?? [],
     rating: Number(r.rating),
     reviewCount: r.review_count,

@@ -92,8 +92,14 @@ const menu: { heading: string; items: MenuItem[] }[] = [
 ];
 
 export default function StudentProfilePage() {
-  const { hydrated, studentName, studentWallet, studentBookings, signOut } =
-    useApp();
+  const {
+    hydrated,
+    studentName,
+    profileAvatarUrl,
+    studentWallet,
+    studentBookings,
+    signOut,
+  } = useApp();
 
   return (
     <div className="flex-1">
@@ -114,7 +120,21 @@ export default function StudentProfilePage() {
         ) : (
           <>
             <div className="flex items-center gap-4 rounded-card border border-border bg-surface p-4">
-              <Avatar name={studentName} size="xl" ring />
+              <Link
+                href="/settings"
+                aria-label="Change profile photo"
+                className="tap relative shrink-0 rounded-full"
+              >
+                <Avatar
+                  name={studentName}
+                  src={profileAvatarUrl}
+                  size="xl"
+                  ring
+                />
+                <span className="absolute -bottom-0.5 -right-0.5 grid size-7 place-items-center rounded-full border-2 border-surface bg-primary text-white">
+                  <Pencil className="size-3" />
+                </span>
+              </Link>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-display text-xl font-bold text-fg">
                   {studentName}

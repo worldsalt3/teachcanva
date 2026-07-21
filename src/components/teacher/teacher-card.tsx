@@ -17,7 +17,12 @@ export function TeacherCard({ teacher }: { teacher: Teacher }) {
           className="tap relative shrink-0"
           aria-label={teacher.name}
         >
-          <Avatar name={teacher.name} size="lg" ring={teacher.isLive} />
+          <Avatar
+            name={teacher.name}
+            src={teacher.avatarUrl}
+            size="lg"
+            ring={teacher.isLive}
+          />
           {teacher.isLive && (
             <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-danger px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-white ring-2 ring-surface">
               Live
@@ -85,7 +90,7 @@ export function TeacherRow({ teacher }: { teacher: Teacher }) {
       href={`/teacher/${teacher.id}`}
       className="tap flex items-center gap-3 rounded-2xl border border-border bg-surface p-3"
     >
-      <Avatar name={teacher.name} size="md" />
+      <Avatar name={teacher.name} src={teacher.avatarUrl} size="md" />
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold text-fg">{teacher.name}</p>
         <p className="truncate text-[13px] text-fg-muted">{teacher.title}</p>
@@ -115,7 +120,13 @@ export function TeacherSpotlightCard({ teacher }: { teacher: Teacher }) {
         icon={false}
         className="relative grid aspect-5/4 w-full place-items-center"
       >
-        <Avatar name={teacher.name} size="xl" ring className="shadow-lg" />
+        <Avatar
+          name={teacher.name}
+          src={teacher.avatarUrl}
+          size="xl"
+          ring
+          className="shadow-lg"
+        />
         {teacher.isLive && (
           <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-danger px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
             <span className="size-1 rounded-full bg-white" /> Live

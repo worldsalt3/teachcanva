@@ -88,6 +88,7 @@ export function TeacherProfile({ teacher }: { teacher: Teacher }) {
         <div className="-mt-10 flex items-end gap-4">
           <Avatar
             name={teacher.name}
+            src={teacher.avatarUrl}
             size="2xl"
             className="shrink-0 ring-4 ring-canvas"
           />
