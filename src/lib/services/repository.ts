@@ -472,7 +472,7 @@ export type BoardEvent =
  */
 export function connectBoard(
   sessionId: string,
-  onEvents: (events: BoardEvent[]) => void,
+  onEvents: (events: BoardEvent[], sentAt?: number) => void,
 ): { send: (events: BoardEvent[]) => void; disconnect: () => void } {
   const supabase = createClient();
   if (!supabase) return { send: () => {}, disconnect: () => {} };
@@ -482,9 +482,12 @@ export function connectBoard(
   });
   channel
     .on("broadcast", { event: "draw" }, (message: Record<string, unknown>) => {
-      const events = (message as { payload?: { events?: BoardEvent[] } })
-        .payload?.events;
-      if (Array.isArray(events) && events.length) onEvents(events);
+      const payload = (
+        message as { payload?: { events?: BoardEvent[]; sentAt?: number } }
+      ).payload;
+      const events = payload?.events;
+      if (Array.isArray(events) && events.length)
+        onEvents(events, payload?.sentAt);
     })
     .subscribe();
 
@@ -494,7 +497,7 @@ export function connectBoard(
       void channel.send({
         type: "broadcast",
         event: "draw",
-        payload: { events },
+        payload: { events, sentAt: Date.now() },
       });
     },
     disconnect: () => {

@@ -101,7 +101,7 @@ export default function LandingPage() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-bright opacity-60" />
               <span className="relative inline-flex size-2 rounded-full bg-success-bright" />
             </span>
-            Live 1:1s &amp; cohorts · escrow protected
+            Live 1:1s &amp; cohorts · escrow via Monnify
           </span>
           <h1 className="mt-5 font-display text-[2.1rem] font-bold leading-[1.15] tracking-tight text-ink md:text-4xl lg:text-[3.2rem] lg:leading-[1.08]">
             Learn{" "}
@@ -273,8 +273,9 @@ export default function LandingPage() {
           ))}
         </div>
         <p className="mt-8 text-[13px] leading-relaxed text-ink-soft/70">
-          No subscriptions — you pay per session, the service fee is shown
-          upfront, and refunds are instant if you cancel before class.
+          No subscriptions — you pay per session through Monnify&apos;s secure
+          checkout, the service fee is shown upfront, and refunds are instant if
+          you cancel before class.
         </p>
       </section>
 
@@ -300,7 +301,7 @@ export default function LandingPage() {
               <Detail
                 icon={<LockKeyhole className="size-4.5" />}
                 title="Escrow wallet"
-                desc="Cancel before class and the refund is instant. No chasing anyone."
+                desc="Payments run through Monnify and sit in escrow. Cancel before class and the refund is instant."
               />
               <Detail
                 icon={<PlayCircle className="size-4.5" />}
@@ -405,7 +406,8 @@ export default function LandingPage() {
               <p className="mt-3 text-[15px] leading-relaxed text-white/60">
                 Set your rate and your days. Open a cohort or take 1:1 bookings.
                 We hold the learner&apos;s payment in escrow and release it to
-                your wallet when class ends.
+                your wallet when class ends — withdrawals go straight to your
+                bank through Monnify.
               </p>
               <Link
                 href="/signup?role=professional"
@@ -491,7 +493,8 @@ export default function LandingPage() {
             </h2>
             <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-white/60">
               Create a free account in under a minute. No subscription — you pay
-              per session, and your money stays in escrow until class ends.
+              per session through Monnify, and your money stays in escrow until
+              class ends.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
               <Link

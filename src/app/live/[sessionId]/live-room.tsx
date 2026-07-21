@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
@@ -11,12 +11,15 @@ import {
   MessageSquare,
   Mic,
   MicOff,
+  QrCode,
   Send,
   Sparkles,
   Video,
   VideoOff,
   X,
+  Zap,
 } from "lucide-react";
+import QRCode from "qrcode";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -27,6 +30,7 @@ import { useApp } from "@/lib/store/app-provider";
 import { useVideoRoom } from "@/lib/services/use-video-room";
 import { isSupabaseEnabled } from "@/lib/services/config";
 import { fetchChat, subscribeChat } from "@/lib/services/repository";
+import { uploadSessionVoice } from "@/lib/services/storage";
 import { cn } from "@/lib/utils";
 import { liveSession as previewSession } from "@/lib/mock";
 import type { LiveSessionInfo } from "@/lib/services/types";
@@ -186,6 +190,10 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
   const [raised, setRaised] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [tpEarned, setTpEarned] = useState(false);
+  const [syncMs, setSyncMs] = useState<number | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [joinUrl, setJoinUrl] = useState("");
+  const [qrData, setQrData] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -193,6 +201,74 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
     setToast(msg);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 2200);
+  };
+
+  // Voice capture: record the professional's mic for the session replay.
+  // Chunks accumulate locally; ending the session uploads the track to the
+  // private `recordings` bucket, which the replay player streams back via
+  // signed URL. Stub mode keeps the replay simulated, so nothing records.
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const voiceChunks = useRef<Blob[]>([]);
+  const [ending, setEnding] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (role !== "teacher" || !isSupabaseEnabled) return;
+    if (typeof MediaRecorder === "undefined") return;
+    let stream: MediaStream | null = null;
+    let cancelled = false;
+    void navigator.mediaDevices
+      ?.getUserMedia({ audio: true })
+      .then((s) => {
+        if (cancelled) {
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        stream = s;
+        const mimeType = ["audio/webm", "audio/mp4"].find((t) =>
+          MediaRecorder.isTypeSupported(t),
+        );
+        const recorder = new MediaRecorder(s, {
+          ...(mimeType ? { mimeType } : {}),
+          audioBitsPerSecond: 32_000,
+        });
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) voiceChunks.current.push(e.data);
+        };
+        recorder.start(5000);
+        recorderRef.current = recorder;
+      })
+      .catch(() => {
+        // Mic denied — the session still runs, just without a voice replay.
+      });
+    return () => {
+      cancelled = true;
+      const recorder = recorderRef.current;
+      if (recorder && recorder.state !== "inactive") recorder.stop();
+      recorderRef.current = null;
+      stream?.getTracks().forEach((t) => t.stop());
+      voiceChunks.current = [];
+    };
+  }, [role, session.id]);
+
+  const endSession = async () => {
+    if (ending) return;
+    setEnding(true);
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      // Flush the final chunk before assembling the blob.
+      await new Promise<void>((resolve) => {
+        recorder.onstop = () => resolve();
+        recorder.stop();
+      });
+    }
+    const type = recorder?.mimeType || "audio/webm";
+    const blob = new Blob(voiceChunks.current, { type });
+    if (blob.size > 0) {
+      fireToast("Saving voice recording…");
+      await uploadSessionVoice(blob, session.id);
+    }
+    router.push(endHref);
   };
 
   useEffect(() => {
@@ -226,30 +302,48 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
     });
   };
 
+  const openInvite = () => {
+    const url = `${window.location.origin}/live/${session.id}?as=student`;
+    setJoinUrl(url);
+    setInviteOpen(true);
+    void QRCode.toDataURL(url, {
+      width: 480,
+      margin: 1,
+      color: { dark: "#0b1220", light: "#ffffff" },
+    })
+      .then(setQrData)
+      .catch(() => setQrData(null));
+  };
+
+  const copyJoinUrl = () => {
+    void navigator.clipboard
+      ?.writeText(joinUrl)
+      .then(() => fireToast("Link copied"))
+      .catch(() => {});
+  };
+
   return (
     <div className="relative flex h-dvh flex-col bg-canvas">
       <header className="flex items-center justify-between gap-2 px-4 pb-2.5 pt-[max(0.6rem,env(safe-area-inset-top))]">
-        <Link
-          href={endHref}
-          className={cn(
-            "tap inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition-transform active:scale-95",
-            role === "teacher"
-              ? "bg-danger text-white"
-              : "bg-surface-2 text-fg",
-          )}
-        >
-          {role === "teacher" ? (
-            <>
-              <X className="size-4" />
-              End
-            </>
-          ) : (
-            <>
-              <ChevronLeft className="size-4" />
-              Leave
-            </>
-          )}
-        </Link>
+        {role === "teacher" ? (
+          <button
+            type="button"
+            onClick={() => void endSession()}
+            disabled={ending}
+            className="tap inline-flex h-9 items-center gap-1.5 rounded-full bg-danger px-3 text-[13px] font-semibold text-white transition-transform active:scale-95 disabled:opacity-70"
+          >
+            <X className="size-4" />
+            {ending ? "Saving…" : "End"}
+          </button>
+        ) : (
+          <Link
+            href={endHref}
+            className="tap inline-flex h-9 items-center gap-1.5 rounded-full bg-surface-2 px-3 text-[13px] font-semibold text-fg transition-transform active:scale-95"
+          >
+            <ChevronLeft className="size-4" />
+            Leave
+          </Link>
+        )}
 
         <div className="min-w-0 text-center">
           <p className="truncate text-sm font-semibold text-fg">
@@ -268,6 +362,15 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
               </span>
             )}
             <span className="tabular-nums text-fg-faint">{timer}</span>
+            {syncMs !== null && (
+              <span
+                className="inline-flex items-center gap-0.5 font-semibold tabular-nums text-teal"
+                title="Measured canvas sync latency"
+              >
+                <Zap className="size-3" />
+                {syncMs}ms
+              </span>
+            )}
           </div>
         </div>
 
@@ -356,6 +459,7 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
         defaultMode="slide"
         className="flex-1"
         syncId={session.id}
+        onSync={setSyncMs}
         overlay={
           role === "teacher" ? (
             <>
@@ -455,6 +559,11 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
             <Hand className="size-5" />
           </DockButton>
         )}
+        {role === "teacher" && (
+          <DockButton label="Invite learners" onClick={openInvite}>
+            <QrCode className="size-5" />
+          </DockButton>
+        )}
         <DockButton
           label="Open chat"
           badge={messages.length > 0 ? messages.length : undefined}
@@ -471,6 +580,43 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
           </span>
         </div>
       )}
+
+      <BottomSheet
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        title="Invite learners"
+      >
+        <div className="flex flex-col items-center pb-2 text-center">
+          <div className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5">
+            {qrData ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={qrData}
+                alt="QR code to join this live session"
+                className="size-52"
+              />
+            ) : (
+              <div className="grid size-52 place-items-center text-[13px] text-ink/60">
+                Generating…
+              </div>
+            )}
+          </div>
+          <p className="mt-4 text-[14px] font-semibold text-fg">
+            Scan to join this session live
+          </p>
+          <p className="mt-1 max-w-64 text-[12px] leading-relaxed text-fg-muted">
+            Anyone can point their camera at the code and land in this room as a
+            learner.
+          </p>
+          <button
+            type="button"
+            onClick={copyJoinUrl}
+            className="tap mt-4 w-full truncate rounded-xl bg-surface-2 px-4 py-3 text-[12px] font-medium text-fg-muted"
+          >
+            {joinUrl}
+          </button>
+        </div>
+      </BottomSheet>
 
       <BottomSheet
         open={chatOpen}

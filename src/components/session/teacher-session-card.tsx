@@ -8,7 +8,7 @@ import { StarValue } from "@/components/ui/rating";
 import { useApp } from "@/lib/store/app-provider";
 import type { CohortSession, Session } from "@/lib/mock";
 
-/** Shapes a scheduled cohort as a Session for the professional's cards. */
+/** Shapes a cohort as a Session for the professional's cards. */
 export function cohortToSession(c: CohortSession): Session {
   return {
     id: c.id,
@@ -18,7 +18,8 @@ export function cohortToSession(c: CohortSession): Session {
     dateLabel: c.dateLabel,
     timeLabel: c.timeLabel,
     durationMins: c.durationMins,
-    status: "upcoming",
+    status: c.status === "ended" ? "completed" : "upcoming",
+    replay: c.status === "ended" || undefined,
   };
 }
 
@@ -101,7 +102,7 @@ export function PastSessionCard({ session }: { session: Session }) {
         )}
         {session.replay && (
           <Link
-            href={`/session/${session.id}/complete`}
+            href={`/session/${session.id}/recording`}
             className="tap text-[12px] font-semibold text-primary-soft"
           >
             Replay

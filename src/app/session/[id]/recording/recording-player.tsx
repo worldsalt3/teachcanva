@@ -3,10 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import {
   FastForward,
+  Maximize,
+  Minimize,
   Pause,
   Play,
   Presentation,
   Rewind,
+  RotateCw,
+  Volume2,
+  VolumeX,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -28,6 +33,17 @@ import { cn } from "@/lib/utils";
 const SPEEDS = [1, 1.5, 2] as const;
 const MAX_ZOOM = 4;
 
+interface LockableOrientation {
+  lock?: (mode: string) => Promise<void>;
+  unlock?: () => void;
+}
+
+/** `screen.orientation` with the (not universally shipped) lock API. */
+function orientationApi(): LockableOrientation | null {
+  if (typeof screen === "undefined" || !screen.orientation) return null;
+  return screen.orientation as LockableOrientation;
+}
+
 function fmt(sec: number): string {
   const s = Math.max(0, Math.floor(sec));
   const m = Math.floor(s / 60);
@@ -48,10 +64,23 @@ interface StageView {
  */
 function ZoomStage({
   playing,
+  voice,
+  fill,
+  rotated,
+  progress,
+  bottomRight,
   onTogglePlay,
   children,
 }: {
   playing: boolean;
+  voice?: boolean;
+  /** Fill the parent instead of rendering a rounded 16:9 card. */
+  fill?: boolean;
+  /** Stage sits inside a 90°-rotated wrapper — remap pointer coords. */
+  rotated?: boolean;
+  /** Playback progress (0–100) shown as a slim bar in fill mode. */
+  progress?: number;
+  bottomRight?: React.ReactNode;
   onTogglePlay: () => void;
   children: React.ReactNode;
 }) {
@@ -73,13 +102,28 @@ function ZoomStage({
   const clamp = (v: StageView): StageView => {
     const rect = stageRef.current?.getBoundingClientRect();
     if (!rect) return v;
-    const maxX = ((v.scale - 1) * rect.width) / 2;
-    const maxY = ((v.scale - 1) * rect.height) / 2;
+    // In rotated mode the screen-space bounding box has swapped dimensions.
+    const w = rotated ? rect.height : rect.width;
+    const h = rotated ? rect.width : rect.height;
+    const maxX = ((v.scale - 1) * w) / 2;
+    const maxY = ((v.scale - 1) * h) / 2;
     return {
       scale: v.scale,
       x: Math.min(maxX, Math.max(-maxX, v.x)),
       y: Math.min(maxY, Math.max(-maxY, v.y)),
     };
+  };
+
+  /**
+   * Screen point → stage-centre-relative coords in the stage's own (possibly
+   * rotated) coordinate system, so gestures stay correct in rotation mode.
+   */
+  const toLocal = (clientX: number, clientY: number) => {
+    const rect = stageRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    const sx = clientX - (rect.left + rect.width / 2);
+    const sy = clientY - (rect.top + rect.height / 2);
+    return rotated ? { x: sy, y: -sx } : { x: sx, y: sy };
   };
 
   /** Zooms by `factor` keeping the stage-centre-relative `focal` point put. */
@@ -96,28 +140,21 @@ function ZoomStage({
     });
   };
 
-  const centreOf = (rect: DOMRect, cx: number, cy: number) => ({
-    x: cx - rect.left - rect.width / 2,
-    y: cy - rect.top - rect.height / 2,
-  });
-
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const el = stageRef.current;
     if (!el) return;
     el.setPointerCapture(e.pointerId);
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    pointers.current.set(e.pointerId, toLocal(e.clientX, e.clientY));
     const g = gesture.current;
     const pts = [...pointers.current.values()];
     if (pts.length === 2) {
       // Pinch begins: freeze the baseline and cancel any pending tap.
-      const rect = el.getBoundingClientRect();
       g.startDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
       g.startScale = view.scale;
-      g.startMid = centreOf(
-        rect,
-        (pts[0].x + pts[1].x) / 2,
-        (pts[0].y + pts[1].y) / 2,
-      );
+      g.startMid = {
+        x: (pts[0].x + pts[1].x) / 2,
+        y: (pts[0].y + pts[1].y) / 2,
+      };
       g.startOffset = { x: view.x, y: view.y };
       g.moved = true;
       if (tapTimer.current) {
@@ -125,7 +162,7 @@ function ZoomStage({
         tapTimer.current = null;
       }
     } else {
-      g.startPoint = { x: e.clientX, y: e.clientY };
+      g.startPoint = toLocal(e.clientX, e.clientY);
       g.startOffset = { x: view.x, y: view.y };
       g.moved = false;
     }
@@ -133,20 +170,19 @@ function ZoomStage({
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!pointers.current.has(e.pointerId)) return;
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const point = toLocal(e.clientX, e.clientY);
+    pointers.current.set(e.pointerId, point);
     const el = stageRef.current;
     if (!el) return;
     const g = gesture.current;
     const pts = [...pointers.current.values()];
 
     if (pts.length === 2) {
-      const rect = el.getBoundingClientRect();
       const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-      const mid = centreOf(
-        rect,
-        (pts[0].x + pts[1].x) / 2,
-        (pts[0].y + pts[1].y) / 2,
-      );
+      const mid = {
+        x: (pts[0].x + pts[1].x) / 2,
+        y: (pts[0].y + pts[1].y) / 2,
+      };
       const scale = Math.min(
         MAX_ZOOM,
         Math.max(1, (g.startScale * dist) / Math.max(1, g.startDist)),
@@ -163,8 +199,8 @@ function ZoomStage({
       return;
     }
 
-    const dx = e.clientX - g.startPoint.x;
-    const dy = e.clientY - g.startPoint.y;
+    const dx = point.x - g.startPoint.x;
+    const dy = point.y - g.startPoint.y;
     if (Math.hypot(dx, dy) > 6) g.moved = true;
     if (view.scale > 1 && g.moved) {
       setSmooth(false);
@@ -203,10 +239,7 @@ function ZoomStage({
       if (view.scale > 1) {
         setView({ scale: 1, x: 0, y: 0 });
       } else {
-        const rect = stageRef.current?.getBoundingClientRect();
-        const focal = rect
-          ? centreOf(rect, e.clientX, e.clientY)
-          : { x: 0, y: 0 };
+        const focal = toLocal(e.clientX, e.clientY);
         setView(clamp({ scale: 2.5, x: focal.x * -1.5, y: focal.y * -1.5 }));
       }
       return;
@@ -219,7 +252,12 @@ function ZoomStage({
   };
 
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black">
+    <div
+      className={cn(
+        "relative w-full overflow-hidden bg-black",
+        fill ? "h-full" : "aspect-video rounded-2xl",
+      )}
+    >
       {/* Pointer-gesture layer: pinch/drag/tap. Keyboard play/pause lives in
           the transport row below, so this stays a non-focusable surface. */}
       <div
@@ -245,7 +283,7 @@ function ZoomStage({
 
       <span className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
         <span className="size-1.5 rounded-full bg-danger" />
-        Rec
+        {voice ? "Rec · Voice" : "Rec"}
       </span>
 
       <div className="absolute right-3 top-3 flex items-center gap-1.5">
@@ -278,6 +316,21 @@ function ZoomStage({
           <ZoomIn className="size-4" />
         </button>
       </div>
+
+      {bottomRight && (
+        <div className="absolute bottom-3 right-3 flex items-center gap-1.5">
+          {bottomRight}
+        </div>
+      )}
+
+      {fill && typeof progress === "number" && (
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-white/10">
+          <span
+            className="absolute inset-y-0 left-0 bg-primary"
+            style={{ width: `${progress}%` }}
+          />
+        </span>
+      )}
 
       <span className="pointer-events-none absolute inset-0 grid place-items-center">
         <span
@@ -331,20 +384,81 @@ export function RecordingPlayer({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   const chapters = remoteSlides ?? slides[sessionId] ?? [];
-  const duration = (session?.durationMins ?? 10) * 60;
+
+  // Voice track recorded live in the session (professional's mic). When it
+  // exists the audio element drives the whole timeline — position, duration
+  // and speed — and the interval below stays off.
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [voiceUrl, setVoiceUrl] = useState<string | null>(null);
+  const [voiceDuration, setVoiceDuration] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isSupabaseEnabled) return;
+    let cancelled = false;
+    void fetch(`/api/sessions/recording?id=${encodeURIComponent(sessionId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { url?: string } | null) => {
+        if (!cancelled && data?.url) setVoiceUrl(data.url);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  const duration = voiceDuration ?? (session?.durationMins ?? 10) * 60;
 
   const [position, setPosition] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
+  const [muted, setMuted] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [rotated, setRotated] = useState<"native" | "css" | null>(null);
   const barRef = useRef<HTMLButtonElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || voiceUrl) return;
     const id = setInterval(() => {
       setPosition((p) => Math.min(duration, p + speed));
     }, 1000);
     return () => clearInterval(id);
-  }, [playing, speed, duration]);
+  }, [playing, speed, duration, voiceUrl]);
+
+  // Keep the audio element in lockstep with the play/pause + speed state.
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) void el.play().catch(() => {});
+    else el.pause();
+  }, [playing, voiceUrl]);
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (el) el.playbackRate = speed;
+  }, [speed, voiceUrl]);
+
+  // Speaker toggle drives the audio element directly.
+  useEffect(() => {
+    const el = audioRef.current;
+    if (el) el.muted = muted;
+  }, [muted, voiceUrl]);
+
+  // Follow native fullscreen exits (system back / Esc) and release any
+  // orientation lock when leaving the page.
+  useEffect(() => {
+    const onChange = () => {
+      if (!document.fullscreenElement) {
+        setFullscreen(false);
+        setRotated(null);
+        orientationApi()?.unlock?.();
+      }
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      orientationApi()?.unlock?.();
+    };
+  }, []);
 
   // Stop at the end of the recording (deferred so it stays out of the effect
   // body, satisfying the no-set-state-in-effect rule).
@@ -354,24 +468,78 @@ export function RecordingPlayer({ sessionId }: { sessionId: string }) {
     return () => clearTimeout(t);
   }, [playing, position, duration]);
 
+  const seekTo = (sec: number) => {
+    const next = Math.min(duration, Math.max(0, sec));
+    setPosition(next);
+    const el = audioRef.current;
+    if (el && Number.isFinite(el.duration)) {
+      el.currentTime = Math.min(next, el.duration);
+    }
+  };
+
   const togglePlay = () => {
-    if (!playing && position >= duration) setPosition(0);
+    if (!playing && position >= duration) seekTo(0);
     setPlaying((p) => !p);
   };
 
-  const skip = (delta: number) =>
-    setPosition((p) => Math.min(duration, Math.max(0, p + delta)));
+  const skip = (delta: number) => seekTo(position + delta);
 
   const seek = (clientX: number) => {
     const el = barRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-    setPosition(ratio * duration);
+    seekTo(ratio * duration);
   };
 
   const cycleSpeed = () =>
     setSpeed((s) => SPEEDS[(SPEEDS.indexOf(s) + 1) % SPEEDS.length]);
+
+  /** Native fullscreen where supported; the fixed overlay covers iOS. */
+  const enterFullscreen = async () => {
+    setFullscreen(true);
+    const el = shellRef.current;
+    if (el?.requestFullscreen) {
+      try {
+        await el.requestFullscreen();
+      } catch {
+        // Element fullscreen unavailable — pseudo-fullscreen still applies.
+      }
+    }
+  };
+
+  const exitFullscreen = () => {
+    if (rotated === "native") orientationApi()?.unlock?.();
+    setRotated(null);
+    setFullscreen(false);
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => {});
+    }
+  };
+
+  /**
+   * Landscape mode: prefer a real orientation lock (Android, requires
+   * fullscreen), otherwise rotate the stage with CSS (iOS et al).
+   */
+  const toggleRotate = async () => {
+    if (rotated) {
+      if (rotated === "native") orientationApi()?.unlock?.();
+      setRotated(null);
+      return;
+    }
+    if (!fullscreen) await enterFullscreen();
+    const o = orientationApi();
+    if (o?.lock) {
+      try {
+        await o.lock("landscape");
+        setRotated("native");
+        return;
+      } catch {
+        // Lock refused by the browser/OS — fall back to CSS rotation.
+      }
+    }
+    setRotated("css");
+  };
 
   const progress = duration ? (position / duration) * 100 : 0;
   const chapterIndex = chapters.length
@@ -401,49 +569,148 @@ export function RecordingPlayer({ sessionId }: { sessionId: string }) {
       </AppHeader>
 
       <div className="space-y-5 px-5 py-4">
-        {/* Video surface — pinch/double-tap to zoom, tap to play/pause */}
-        <ZoomStage playing={playing} onTogglePlay={togglePlay}>
-          <MediaThumb
-            seed={sessionId}
-            icon={false}
-            className="absolute inset-0"
+        {voiceUrl && (
+          <audio
+            ref={audioRef}
+            src={voiceUrl}
+            preload="metadata"
+            className="hidden"
+            onLoadedMetadata={(e) => {
+              const el = e.currentTarget;
+              if (el.duration === Infinity) {
+                // Chrome quirk: streamed MediaRecorder tracks report Infinity
+                // until forced to scan — seek far ahead once to resolve it.
+                el.currentTime = 1e7;
+                el.ondurationchange = () => {
+                  if (Number.isFinite(el.duration) && el.duration > 0) {
+                    el.ondurationchange = null;
+                    el.currentTime = 0;
+                    setVoiceDuration(el.duration);
+                  }
+                };
+              } else if (el.duration > 0) {
+                setVoiceDuration(el.duration);
+              }
+            }}
+            onTimeUpdate={(e) => {
+              const el = e.currentTarget;
+              if (Number.isFinite(el.duration)) {
+                setPosition(el.currentTime);
+              }
+            }}
+            onEnded={() => setPlaying(false)}
           />
+        )}
 
-          {activeSlide?.kind === "image" && activeSlide.src ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={activeSlide.src}
-                alt={activeSlide.title || `Slide ${chapterIndex + 1}`}
-                className="absolute inset-0 h-full w-full object-contain"
+        {/* Video surface — pinch/double-tap to zoom, tap to play/pause.
+            The shell doubles as the fullscreen overlay: native fullscreen
+            where supported, fixed-position fallback everywhere else. */}
+        <div
+          ref={shellRef}
+          className={cn(fullscreen && "fixed inset-0 z-50 bg-black")}
+        >
+          <div
+            className={cn(
+              fullscreen &&
+                (rotated === "css"
+                  ? "absolute left-1/2 top-1/2 h-dvw w-dvh -translate-x-1/2 -translate-y-1/2 rotate-90"
+                  : "h-full w-full"),
+            )}
+          >
+            <ZoomStage
+              playing={playing}
+              voice={Boolean(voiceUrl)}
+              fill={fullscreen}
+              rotated={fullscreen && rotated === "css"}
+              progress={fullscreen ? progress : undefined}
+              onTogglePlay={togglePlay}
+              bottomRight={
+                <>
+                  {voiceUrl && (
+                    <button
+                      type="button"
+                      aria-label={muted ? "Unmute voice" : "Mute voice"}
+                      onClick={() => setMuted((m) => !m)}
+                      className="tap grid size-8 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm"
+                    >
+                      {muted ? (
+                        <VolumeX className="size-4" />
+                      ) : (
+                        <Volume2 className="size-4" />
+                      )}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    aria-label={
+                      rotated ? "Exit landscape view" : "Landscape view"
+                    }
+                    onClick={toggleRotate}
+                    className={cn(
+                      "tap grid size-8 place-items-center rounded-full text-white backdrop-blur-sm",
+                      rotated ? "bg-primary/80" : "bg-black/50",
+                    )}
+                  >
+                    <RotateCw className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={fullscreen ? "Exit full screen" : "Full screen"}
+                    onClick={fullscreen ? exitFullscreen : enterFullscreen}
+                    className="tap grid size-8 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm"
+                  >
+                    {fullscreen ? (
+                      <Minimize className="size-4" />
+                    ) : (
+                      <Maximize className="size-4" />
+                    )}
+                  </button>
+                </>
+              }
+            >
+              <MediaThumb
+                seed={sessionId}
+                icon={false}
+                className="absolute inset-0"
               />
-              {activeSlide.title && (
-                <span className="absolute inset-x-0 bottom-0 truncate bg-black/50 px-3 py-2 text-[12px] font-medium text-white">
-                  {activeSlide.title}
+
+              {activeSlide?.kind === "image" && activeSlide.src ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={activeSlide.src}
+                    alt={activeSlide.title || `Slide ${chapterIndex + 1}`}
+                    className="absolute inset-0 h-full w-full object-contain"
+                  />
+                  {activeSlide.title && (
+                    <span className="absolute inset-x-0 bottom-0 truncate bg-black/50 px-3 py-2 text-[12px] font-medium text-white">
+                      {activeSlide.title}
+                    </span>
+                  )}
+                </>
+              ) : activeSlide ? (
+                <span className="absolute inset-0 grid place-items-center p-6 text-center">
+                  <span className="block">
+                    <span className="block text-[12px] font-semibold uppercase tracking-wide text-white/60">
+                      {activeSlide.title || `Slide ${chapterIndex + 1}`}
+                    </span>
+                    <span className="mt-2 block font-display text-xl font-bold text-white">
+                      {activeSlide.kind === "video"
+                        ? "Video clip"
+                        : activeSlide.body || "—"}
+                    </span>
+                  </span>
+                </span>
+              ) : (
+                <span className="absolute inset-0 grid place-items-center p-6 text-center">
+                  <span className="font-display text-lg font-bold text-white/90">
+                    {session?.topic ?? "Session recording"}
+                  </span>
                 </span>
               )}
-            </>
-          ) : activeSlide ? (
-            <span className="absolute inset-0 grid place-items-center p-6 text-center">
-              <span className="block">
-                <span className="block text-[12px] font-semibold uppercase tracking-wide text-white/60">
-                  {activeSlide.title || `Slide ${chapterIndex + 1}`}
-                </span>
-                <span className="mt-2 block font-display text-xl font-bold text-white">
-                  {activeSlide.kind === "video"
-                    ? "Video clip"
-                    : activeSlide.body || "—"}
-                </span>
-              </span>
-            </span>
-          ) : (
-            <span className="absolute inset-0 grid place-items-center p-6 text-center">
-              <span className="font-display text-lg font-bold text-white/90">
-                {session?.topic ?? "Session recording"}
-              </span>
-            </span>
-          )}
-        </ZoomStage>
+            </ZoomStage>
+          </div>
+        </div>
 
         {/* Scrubber */}
         <div>

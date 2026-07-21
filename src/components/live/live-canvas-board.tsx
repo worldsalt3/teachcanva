@@ -32,6 +32,8 @@ interface LiveCanvasBoardProps {
    * Requires Supabase; without it the board works standalone.
    */
   syncId?: string;
+  /** Reports measured one-way stroke latency (ms) when remote events arrive. */
+  onSync?: (latencyMs: number) => void;
 }
 
 export function LiveCanvasBoard({
@@ -41,6 +43,7 @@ export function LiveCanvasBoard({
   overlay,
   className,
   syncId,
+  onSync,
 }: LiveCanvasBoardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -138,11 +141,15 @@ export function LiveCanvasBoard({
     paintBase(mode);
   }, [mode, paintBase]);
 
-  // ── realtime sync ──────────────────────────────────────────────────────────
+  // ── realtime sync ──────────────────────────────────────────────────────────────────────
   const modeRef = useRef(mode);
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
+  const onSyncRef = useRef(onSync);
+  useEffect(() => {
+    onSyncRef.current = onSync;
+  }, [onSync]);
 
   const pushHistory = useCallback(() => {
     const canvas = canvasRef.current;
@@ -194,7 +201,12 @@ export function LiveCanvasBoard({
 
   useEffect(() => {
     if (!syncId || !isSupabaseEnabled) return;
-    const conn = connectBoard(syncId, applyRemote);
+    const conn = connectBoard(syncId, (events, sentAt) => {
+      applyRemote(events);
+      // Clock skew across devices can only shrink this, so clamp at 0.
+      if (typeof sentAt === "number")
+        onSyncRef.current?.(Math.max(0, Date.now() - sentAt));
+    });
     sync.current = conn;
     return () => {
       conn.disconnect();

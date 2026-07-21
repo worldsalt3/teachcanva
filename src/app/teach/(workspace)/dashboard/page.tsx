@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Bell, ChevronRight, Sparkles, Video } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { SectionHeader } from "@/components/ui/section-header";
@@ -21,6 +23,7 @@ export default function TeacherDashboardPage() {
     teacherWallet,
     unreadCount,
     notifyGoLive,
+    startInstantSession,
     profileName,
     userId,
     cohorts,
@@ -45,11 +48,26 @@ export default function TeacherDashboardPage() {
       ? scheduled
       : teacherScheduled;
   const past = isSupabaseEnabled
-    ? teacherBookings.filter((b) => b.status === "completed")
+    ? [
+        ...teacherBookings.filter((b) => b.status === "completed"),
+        // Ended cohorts (incl. instant sessions) surface here with a replay.
+        ...cohorts
+          .filter((c) => c.professionalId === ownerId && c.status === "ended")
+          .map(cohortToSession),
+      ]
     : teacherPast;
 
-  const instantId = `live-${userId ?? "instant"}`;
-  const teachLiveHref = `/live/${instantId}?as=teacher`;
+  // "Go live now" creates a real session row first so the voice recording
+  // and replay reference a DB id, then joins it as the professional.
+  const router = useRouter();
+  const [starting, setStarting] = useState(false);
+  const goLive = async () => {
+    if (starting) return;
+    setStarting(true);
+    const id = await startInstantSession();
+    notifyGoLive("Instant live session", id);
+    router.push(`/live/${id}?as=teacher`);
+  };
 
   return (
     <div className="flex-1">
@@ -104,14 +122,15 @@ export default function TeacherDashboardPage() {
           <p className="mt-1 max-w-64 text-[14px] text-white/85">
             Start an instant class and earn 2× Professional Points.
           </p>
-          <Link
-            href={teachLiveHref}
-            onClick={() => notifyGoLive("Instant live session", instantId)}
-            className="tap mt-4 inline-flex h-12 items-center gap-2 rounded-xl bg-white px-5 font-semibold text-primary-700 transition-transform active:scale-[0.98]"
+          <button
+            type="button"
+            onClick={() => void goLive()}
+            disabled={starting}
+            className="tap mt-4 inline-flex h-12 items-center gap-2 rounded-xl bg-white px-5 font-semibold text-primary-700 transition-transform active:scale-[0.98] disabled:opacity-80"
           >
             <Video className="size-5" />
-            Go Live
-          </Link>
+            {starting ? "Starting…" : "Go Live"}
+          </button>
         </div>
 
         {!hydrated ? (
