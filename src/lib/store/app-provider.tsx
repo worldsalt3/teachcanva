@@ -191,6 +191,7 @@ interface AppContextValue extends PersistShape {
   // cohorts
   enrolInCohort: (id: string) => EnrolResult;
   createCohortSession: (draft: CohortDraft) => CohortSession;
+  startInstantSession: () => Promise<string>;
   startCohort: (id: string) => void;
   endCohort: (id: string) => void;
   notifyGoLive: (topic: string, sessionId?: string) => void;
@@ -678,6 +679,52 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   /**
+   * "Go live now": creates a real, immediately-live instant session (free,
+   * open seats) and returns the id to join. With Supabase on it awaits the
+   * DB-generated id so the voice recording, replay and settlement all
+   * reference the same row — ad-hoc `live-{userId}` ids had no row and
+   * couldn't have replays.
+   */
+  const startInstantSession = useCallback(async (): Promise<string> => {
+    // Built outside setState: updater functions may run deferred, and the
+    // cohort is needed immediately for the remote insert below.
+    const cohort: CohortSession = {
+      id: `coh-${Date.now()}`,
+      professionalId: state.userId ?? currentTeacher.id,
+      professionalName:
+        state.profileName ??
+        (isSupabaseEnabled ? "Professional" : currentTeacher.name),
+      title: "Instant live session",
+      topic: "Live now",
+      tag: "LIVE",
+      dateLabel: "TODAY",
+      timeLabel: new Date().toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+      durationMins: 60,
+      seatLimit: 100,
+      seatsTaken: 0,
+      pricePerSeat: 0,
+      status: "live",
+    };
+    setState((s) => ({ ...s, cohorts: [cohort, ...s.cohorts] }));
+    if (isSupabaseEnabled) {
+      const remoteId = await insertCohortSession(cohort);
+      if (remoteId) {
+        setState((s) => ({
+          ...s,
+          cohorts: s.cohorts.map((c) =>
+            c.id === cohort.id ? { ...c, id: remoteId } : c,
+          ),
+        }));
+        return remoteId;
+      }
+    }
+    return cohort.id;
+  }, [state.userId, state.profileName]);
+
+  /**
    * Start a scheduled cohort session: flips it live (locally + remotely) so
    * it appears on learners' Live Now rail, and notifies followers (FR-N03).
    */
@@ -908,6 +955,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       withdrawWallet,
       enrolInCohort,
       createCohortSession,
+      startInstantSession,
       startCohort,
       endCohort,
       notifyGoLive,
@@ -931,6 +979,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     withdrawWallet,
     enrolInCohort,
     createCohortSession,
+    startInstantSession,
     startCohort,
     endCohort,
     notifyGoLive,
