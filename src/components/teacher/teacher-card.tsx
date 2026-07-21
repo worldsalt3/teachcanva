@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { MediaThumb } from "@/components/ui/media";
 import { StarValue } from "@/components/ui/rating";
 import { formatNaira } from "@/lib/utils";
 import type { Teacher } from "@/lib/mock";
@@ -98,6 +99,44 @@ export function TeacherRow({ teacher }: { teacher: Teacher }) {
         </div>
       </div>
       <ChevronRight className="size-5 shrink-0 text-fg-faint" />
+    </Link>
+  );
+}
+
+/** Picture-forward card for the auto-scrolling Recommended rail. */
+export function TeacherSpotlightCard({ teacher }: { teacher: Teacher }) {
+  return (
+    <Link
+      href={`/teacher/${teacher.id}`}
+      className="tap w-40 shrink-0 overflow-hidden rounded-card border border-border bg-surface"
+    >
+      <MediaThumb
+        seed={teacher.id}
+        icon={false}
+        className="relative grid aspect-5/4 w-full place-items-center"
+      >
+        <Avatar name={teacher.name} size="xl" ring className="shadow-lg" />
+        {teacher.isLive && (
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-danger px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+            <span className="size-1 rounded-full bg-white" /> Live
+          </span>
+        )}
+      </MediaThumb>
+      <div className="p-3">
+        <p className="truncate text-[13.5px] font-semibold text-fg">
+          {teacher.name}
+        </p>
+        <p className="truncate text-[12px] text-fg-muted">
+          {teacher.title || teacher.subjects[0] || "Professional"}
+        </p>
+        <div className="mt-1.5 flex items-center justify-between gap-2 text-[12px]">
+          <StarValue value={teacher.rating} className="text-[12px]" />
+          <span className="truncate font-semibold text-fg">
+            {formatNaira(teacher.hourlyRate)}
+            <span className="font-normal text-fg-faint">/hr</span>
+          </span>
+        </div>
+      </div>
     </Link>
   );
 }
