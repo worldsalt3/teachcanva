@@ -31,6 +31,8 @@ export interface Teacher {
   profileId?: string;
   name: string;
   title: string;
+  /** Public profile photo (avatars bucket) — falls back to initials. */
+  avatarUrl?: string;
   subjects: string[];
   rating: number;
   reviewCount: number;

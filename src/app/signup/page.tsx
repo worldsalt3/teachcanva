@@ -1,9 +1,15 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, GraduationCap, Presentation } from "lucide-react";
+import {
+  ArrowRight,
+  Camera,
+  GraduationCap,
+  Plus,
+  Presentation,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -15,6 +21,10 @@ import type { Role } from "@/lib/mock/types";
 import { useApp } from "@/lib/store/app-provider";
 import { isSupabaseEnabled } from "@/lib/services/config";
 import { signInWithGoogle, signUpWithEmail } from "@/lib/services/auth";
+import {
+  blobToAvatarDataUrl,
+  stashPendingAvatar,
+} from "@/lib/services/storage";
 import { cn } from "@/lib/utils";
 
 const ROLES: {
@@ -45,12 +55,14 @@ function SignupForm() {
     roleParam === "professional" || roleParam === "teacher"
       ? "teacher"
       : "student";
-  const { signIn, setProfileName, setRole } = useApp();
+  const { signIn, setProfileName, setProfileAvatar, setRole } = useApp();
   const [role, setRoleChoice] = useState<Role>(initialRole);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [profession, setProfession] = useState("");
+  const [photo, setPhoto] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [customInterest, setCustomInterest] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +83,26 @@ function SignupForm() {
     setCustomInterest("");
   };
 
+  const onPhotoPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const dataUrl = await blobToAvatarDataUrl(file);
+    if (dataUrl) {
+      setPhoto(dataUrl);
+      setError(null);
+    }
+  };
+
+  /** Photo is mandatory for professionals — it fronts their public listing. */
+  const requirePhoto = (): boolean => {
+    if (role === "teacher" && !photo) {
+      setError("Add a profile photo — learners see it on your listing.");
+      return false;
+    }
+    return true;
+  };
+
   const completeSignup = async () => {
     setError(null);
     setNotice(null);
@@ -78,7 +110,11 @@ function SignupForm() {
       setError("Please tell us your profession to sign up as a Professional.");
       return;
     }
+    if (!requirePhoto()) return;
     setBusy(true);
+    // Stash the photo pre-signup — the store uploads it on the first backend
+    // load (works across email confirmation too, where no session exists yet).
+    if (photo) stashPendingAvatar(photo);
     const res = await signUpWithEmail({
       name: name.trim() || email.split("@")[0],
       email,
@@ -93,6 +129,7 @@ function SignupForm() {
       return;
     }
     if (name.trim()) setProfileName(name);
+    if (photo) setProfileAvatar(photo);
     setRole(role);
     if (res.needsConfirmation) {
       setNotice("Almost there — check your email to confirm your account.");
@@ -103,6 +140,8 @@ function SignupForm() {
   };
 
   const google = async () => {
+    if (!requirePhoto()) return;
+    if (photo) stashPendingAvatar(photo);
     if (isSupabaseEnabled) {
       // Pass the chosen role so the callback records it on the profile —
       // OAuth signups can't carry metadata like email signups do.
@@ -111,6 +150,7 @@ function SignupForm() {
       return;
     }
     if (name.trim()) setProfileName(name);
+    if (photo) setProfileAvatar(photo);
     setRole(role);
     signIn();
     router.push(homeHref);
@@ -177,6 +217,48 @@ function SignupForm() {
         </div>
 
         <div className="mt-6 space-y-5">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              className="tap relative shrink-0 rounded-full"
+              aria-label={photo ? "Change profile photo" : "Add profile photo"}
+            >
+              {photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photo}
+                  alt=""
+                  className="size-18 rounded-full object-cover ring-2 ring-primary/40"
+                />
+              ) : (
+                <span className="grid size-18 place-items-center rounded-full border-2 border-dashed border-ink/20 bg-ink/5 text-ink-soft">
+                  <Camera className="size-6" />
+                </span>
+              )}
+              <span className="absolute -bottom-0.5 -right-0.5 grid size-6.5 place-items-center rounded-full border-2 border-white bg-primary text-white">
+                <Plus className="size-3.5" />
+              </span>
+            </button>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onPhotoPick}
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink">
+                Profile photo{role === "teacher" ? "" : " (optional)"}
+              </p>
+              <p className="mt-0.5 text-[12px] leading-snug text-ink-soft">
+                {role === "teacher"
+                  ? "Required — learners see it on your listing."
+                  : "Help professionals recognise you in sessions."}
+              </p>
+            </div>
+          </div>
+
           <Field label="Full name" htmlFor="name" tone="light">
             <Input
               id="name"

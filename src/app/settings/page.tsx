@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Bell,
+  Camera,
   Check,
   Mail,
   Moon,
@@ -19,10 +20,19 @@ import { useApp } from "@/lib/store/app-provider";
 import { cn } from "@/lib/utils";
 
 export default function SettingsPage() {
-  const { studentName, setProfileName, signOut } = useApp();
+  const {
+    studentName,
+    setProfileName,
+    profileAvatarUrl,
+    changeAvatar,
+    signOut,
+  } = useApp();
   const [name, setName] = useState(studentName);
   const [lastSynced, setLastSynced] = useState(studentName);
   const [saved, setSaved] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [prefs, setPrefs] = useState({
     push: true,
     email: false,
@@ -42,6 +52,17 @@ export default function SettingsPage() {
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const onPhotoPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoError(false);
+    setPhotoBusy(true);
+    const ok = await changeAvatar(file);
+    setPhotoBusy(false);
+    if (!ok) setPhotoError(true);
+  };
+
   const toggle = (key: keyof typeof prefs) =>
     setPrefs((p) => ({ ...p, [key]: !p[key] }));
 
@@ -58,12 +79,47 @@ export default function SettingsPage() {
       <div className="space-y-7 px-5 pt-4">
         <section className="space-y-4">
           <div className="flex items-center gap-4">
-            <Avatar name={name || studentName} size="xl" ring />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={photoBusy}
+              className="tap relative shrink-0 rounded-full"
+              aria-label="Change profile photo"
+            >
+              <Avatar
+                name={name || studentName}
+                src={profileAvatarUrl}
+                size="xl"
+                ring
+                className={photoBusy ? "opacity-60" : undefined}
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 grid size-7 place-items-center rounded-full border-2 border-canvas bg-primary text-white">
+                <Camera className="size-3.5" />
+              </span>
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onPhotoPick}
+            />
             <div className="min-w-0">
               <p className="truncate font-display text-lg font-bold text-fg">
                 {name || studentName}
               </p>
-              <p className="text-[13px] text-fg-muted">Learner · Lagos</p>
+              <p
+                className={cn(
+                  "text-[13px]",
+                  photoError ? "text-danger" : "text-fg-muted",
+                )}
+              >
+                {photoBusy
+                  ? "Uploading photo…"
+                  : photoError
+                    ? "Couldn't update your photo — try again."
+                    : "Tap the photo to change it"}
+              </p>
             </div>
           </div>
 

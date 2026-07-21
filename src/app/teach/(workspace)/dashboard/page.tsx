@@ -25,6 +25,7 @@ export default function TeacherDashboardPage() {
     notifyGoLive,
     startInstantSession,
     profileName,
+    profileAvatarUrl,
     userId,
     cohorts,
     teacherBookings,
@@ -74,7 +75,7 @@ export default function TeacherDashboardPage() {
       <header className="sticky top-0 z-30 bg-canvas/85 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl">
         <div className="flex items-center justify-between gap-3">
           <Link href="/teach/profile" className="tap flex items-center gap-3">
-            <Avatar name={displayName} size="md" ring />
+            <Avatar name={displayName} src={profileAvatarUrl} size="md" ring />
             {hydrated ? (
               <div>
                 <p className="text-[13px] text-fg-muted">Good afternoon</p>

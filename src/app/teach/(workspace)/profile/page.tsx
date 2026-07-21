@@ -96,7 +96,8 @@ const menu: { heading: string; items: MenuItem[] }[] = [
 ];
 
 export default function TeacherProfilePage() {
-  const { teacherWallet, signOut, profileName, hydrated } = useApp();
+  const { teacherWallet, signOut, profileName, profileAvatarUrl, hydrated } =
+    useApp();
   const level = tpLevel(teacherWallet.tpBalance);
   const displayName =
     profileName ?? (isSupabaseEnabled ? "Professional" : currentTeacher.name);
@@ -120,7 +121,21 @@ export default function TeacherProfilePage() {
         ) : (
           <>
             <div className="flex items-center gap-4 rounded-card border border-border bg-surface p-4">
-              <Avatar name={displayName} size="xl" ring />
+              <Link
+                href="/settings"
+                aria-label="Change profile photo"
+                className="tap relative shrink-0 rounded-full"
+              >
+                <Avatar
+                  name={displayName}
+                  src={profileAvatarUrl}
+                  size="xl"
+                  ring
+                />
+                <span className="absolute -bottom-0.5 -right-0.5 grid size-7 place-items-center rounded-full border-2 border-surface bg-primary text-white">
+                  <Pencil className="size-3" />
+                </span>
+              </Link>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <p className="truncate font-display text-xl font-bold text-fg">

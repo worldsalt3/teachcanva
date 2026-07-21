@@ -109,7 +109,12 @@ export function BookingFlow({ teacher }: { teacher: Teacher }) {
 
       <div className="space-y-6 px-5 pt-4">
         <div className="flex items-center gap-3.5 rounded-card border border-border bg-surface p-3.5">
-          <Avatar name={teacher.name} size="lg" ring={teacher.isLive} />
+          <Avatar
+            name={teacher.name}
+            src={teacher.avatarUrl}
+            size="lg"
+            ring={teacher.isLive}
+          />
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold text-fg">{teacher.name}</p>
             <p className="truncate text-[13px] text-fg-muted">

@@ -123,6 +123,7 @@ export interface SessionUser {
   email: string;
   name: string;
   role: Role;
+  avatarUrl: string | null;
 }
 
 /** Current signed-in user resolved from the session + profile, or null. */
@@ -137,7 +138,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, name")
+    .select("role, name, avatar_url")
     .eq("id", user.id)
     .single();
 
@@ -146,5 +147,6 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     email: user.email ?? "",
     name: profile?.name ?? (user.user_metadata?.name as string) ?? "",
     role: (profile?.role as Role) ?? "student",
+    avatarUrl: (profile?.avatar_url as string | null) ?? null,
   };
 }

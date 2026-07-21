@@ -54,9 +54,16 @@ import {
   insertChatMessage,
   insertCohortSession,
   replaceSlides,
+  saveAvatarUrl,
   setCohortStatus,
   upsertCohortEnrolment,
 } from "@/lib/services/repository";
+import {
+  blobToAvatarDataUrl,
+  clearPendingAvatar,
+  readPendingAvatar,
+  uploadAvatar,
+} from "@/lib/services/storage";
 import { UUID_RE } from "@/lib/services/teacher-mapper";
 
 const STORAGE_KEY = "teachcanvas:v1";
@@ -105,6 +112,7 @@ interface PersistShape {
   userId: string | null;
   userEmail: string | null;
   profileName: string | null;
+  profileAvatarUrl: string | null;
   role: Role;
   teachers: Teacher[];
   studentWallet: WalletAccount;
@@ -140,6 +148,7 @@ function initialState(): PersistShape {
       userId: null,
       userEmail: null,
       profileName: null,
+      profileAvatarUrl: null,
       role: "student",
       teachers: [],
       studentWallet: emptyWallet(),
@@ -160,6 +169,7 @@ function initialState(): PersistShape {
     userId: null,
     userEmail: null,
     profileName: null,
+    profileAvatarUrl: null,
     role: "student",
     teachers: structuredClone(seedTeachers),
     studentWallet: structuredClone(seedStudentWallet),
@@ -182,6 +192,8 @@ interface AppContextValue extends PersistShape {
   signIn: () => void;
   signOut: () => void;
   setProfileName: (name: string) => void;
+  setProfileAvatar: (url: string | null) => void;
+  changeAvatar: (file: Blob) => Promise<boolean>;
   setRole: (role: Role) => void;
   // bookings + wallet
   createBooking: (draft: BookingDraft) => Session;
@@ -269,6 +281,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadBackend = useCallback(async (): Promise<boolean> => {
     const user = await getSessionUser();
     if (!user) return false;
+    // First load after signup: upload the stashed profile photo (covers
+    // email-confirmation and OAuth flows where no session existed at signup).
+    let avatarUrl = user.avatarUrl;
+    if (!avatarUrl) {
+      const pending = readPendingAvatar();
+      if (pending) {
+        const url = await uploadAvatar(pending);
+        if (url) {
+          await saveAvatarUrl(url);
+          avatarUrl = url;
+          clearPendingAvatar();
+        }
+      }
+    }
     const [
       bookings,
       teacherBookings,
@@ -294,6 +320,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       userId: user.id,
       userEmail: user.email || null,
       profileName: user.name ?? s.profileName,
+      profileAvatarUrl: avatarUrl ?? s.profileAvatarUrl,
       role: user.role,
       studentBookings: bookings,
       teacherBookings,
@@ -378,6 +405,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setProfileName = useCallback((name: string) => {
     setState((s) => ({ ...s, profileName: name.trim() || null }));
+  }, []);
+
+  const setProfileAvatar = useCallback((url: string | null) => {
+    setState((s) => ({ ...s, profileAvatarUrl: url }));
+  }, []);
+
+  /**
+   * Sets a new profile photo: uploads to the avatars bucket + saves the URL
+   * on the profile (and teachers listing) when Supabase is on; stores a
+   * downscaled data URL locally in stub mode.
+   */
+  const changeAvatar = useCallback(async (file: Blob): Promise<boolean> => {
+    if (isSupabaseEnabled) {
+      const url = await uploadAvatar(file);
+      if (!url) return false;
+      void saveAvatarUrl(url);
+      setState((s) => ({ ...s, profileAvatarUrl: url }));
+      return true;
+    }
+    const dataUrl = await blobToAvatarDataUrl(file);
+    if (!dataUrl) return false;
+    setState((s) => ({ ...s, profileAvatarUrl: dataUrl }));
+    return true;
   }, []);
 
   const setRole = useCallback((role: Role) => {
@@ -948,6 +998,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signOut,
       setProfileName,
+      setProfileAvatar,
+      changeAvatar,
       setRole,
       createBooking,
       cancelBooking,
@@ -972,6 +1024,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signOut,
     setProfileName,
+    setProfileAvatar,
+    changeAvatar,
     setRole,
     createBooking,
     cancelBooking,
