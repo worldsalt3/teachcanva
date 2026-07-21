@@ -11,12 +11,15 @@ import {
   MessageSquare,
   Mic,
   MicOff,
+  QrCode,
   Send,
   Sparkles,
   Video,
   VideoOff,
   X,
+  Zap,
 } from "lucide-react";
+import QRCode from "qrcode";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -186,6 +189,10 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
   const [raised, setRaised] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [tpEarned, setTpEarned] = useState(false);
+  const [syncMs, setSyncMs] = useState<number | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [joinUrl, setJoinUrl] = useState("");
+  const [qrData, setQrData] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -224,6 +231,26 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
       fireToast(next ? "Hand raised ✋" : "Hand lowered");
       return next;
     });
+  };
+
+  const openInvite = () => {
+    const url = `${window.location.origin}/live/${session.id}?as=student`;
+    setJoinUrl(url);
+    setInviteOpen(true);
+    void QRCode.toDataURL(url, {
+      width: 480,
+      margin: 1,
+      color: { dark: "#0b1220", light: "#ffffff" },
+    })
+      .then(setQrData)
+      .catch(() => setQrData(null));
+  };
+
+  const copyJoinUrl = () => {
+    void navigator.clipboard
+      ?.writeText(joinUrl)
+      .then(() => fireToast("Link copied"))
+      .catch(() => {});
   };
 
   return (
@@ -268,6 +295,15 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
               </span>
             )}
             <span className="tabular-nums text-fg-faint">{timer}</span>
+            {syncMs !== null && (
+              <span
+                className="inline-flex items-center gap-0.5 font-semibold tabular-nums text-teal"
+                title="Measured canvas sync latency"
+              >
+                <Zap className="size-3" />
+                {syncMs}ms
+              </span>
+            )}
           </div>
         </div>
 
@@ -356,6 +392,7 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
         defaultMode="slide"
         className="flex-1"
         syncId={session.id}
+        onSync={setSyncMs}
         overlay={
           role === "teacher" ? (
             <>
@@ -455,6 +492,11 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
             <Hand className="size-5" />
           </DockButton>
         )}
+        {role === "teacher" && (
+          <DockButton label="Invite learners" onClick={openInvite}>
+            <QrCode className="size-5" />
+          </DockButton>
+        )}
         <DockButton
           label="Open chat"
           badge={messages.length > 0 ? messages.length : undefined}
@@ -471,6 +513,43 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
           </span>
         </div>
       )}
+
+      <BottomSheet
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        title="Invite learners"
+      >
+        <div className="flex flex-col items-center pb-2 text-center">
+          <div className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5">
+            {qrData ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={qrData}
+                alt="QR code to join this live session"
+                className="size-52"
+              />
+            ) : (
+              <div className="grid size-52 place-items-center text-[13px] text-ink/60">
+                Generating…
+              </div>
+            )}
+          </div>
+          <p className="mt-4 text-[14px] font-semibold text-fg">
+            Scan to join this session live
+          </p>
+          <p className="mt-1 max-w-64 text-[12px] leading-relaxed text-fg-muted">
+            Anyone can point their camera at the code and land in this room as a
+            learner.
+          </p>
+          <button
+            type="button"
+            onClick={copyJoinUrl}
+            className="tap mt-4 w-full truncate rounded-xl bg-surface-2 px-4 py-3 text-[12px] font-medium text-fg-muted"
+          >
+            {joinUrl}
+          </button>
+        </div>
+      </BottomSheet>
 
       <BottomSheet
         open={chatOpen}
