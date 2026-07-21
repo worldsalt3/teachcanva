@@ -1,0 +1,144 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e5]:
+      - link "TeachCanvas" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e13]:
+        - link "Log in" [ref=e14] [cursor=pointer]:
+          - /url: /login
+        - link "Create account" [ref=e15] [cursor=pointer]:
+          - /url: /signup?role=learner
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - heading [level=1] [ref=e18]:
+          - text: Learn
+          - generic [ref=e19]: live
+          - text: from people who do the work.
+        - paragraph [ref=e22]: Book a 1:1 or take a seat in a cohort. Your professional teaches on a shared canvas, your money sits in escrow until the class ends, and every session comes with a replay.
+        - generic [ref=e23]:
+          - link "Find a professional" [ref=e24] [cursor=pointer]:
+            - /url: /signup?role=learner
+          - link "Teach on TeachCanvas" [ref=e25] [cursor=pointer]:
+            - /url: /signup?role=professional
+        - paragraph [ref=e28]: 1:1 sessions & cohorts · escrow payments · replays included
+      - generic [ref=e29]:
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - generic [ref=e32]:
+              - generic [ref=e33]: AO
+              - generic [ref=e34]:
+                - paragraph [ref=e35]: Advanced Calculus
+                - paragraph [ref=e36]: Aisha Olamide
+            - generic [ref=e37]: LIVE
+          - generic [ref=e39]:
+            - img "Handwritten calculus worked live on the TeachCanvas board" [ref=e40]
+            - generic [ref=e42]: SLIDE 5 · INTEGRALS
+            - generic [ref=e43]: 132 learners
+            - generic [ref=e48]: Canvas synced in real time
+          - generic [ref=e55]:
+            - generic [ref=e56]: ₦5,000 held in escrow
+            - generic [ref=e60]: +50 Learning Points
+        - paragraph [ref=e64]: A real session on the canvas — annotate, chat, replay.
+    - generic [ref=e65]:
+      - heading "How it works" [level=2] [ref=e66]
+      - generic [ref=e67]:
+        - generic [ref=e68]:
+          - text: "01"
+          - heading "Find your person" [level=3] [ref=e69]
+          - paragraph [ref=e70]: Search by skill. Every professional lists their rate, availability and reviews, so you know what you're getting.
+        - generic [ref=e71]:
+          - text: "02"
+          - heading "Book it" [level=3] [ref=e72]
+          - paragraph [ref=e73]: Pick a time that works, or grab a cohort seat. Payment is held in escrow, not handed over.
+        - generic [ref=e74]:
+          - text: "03"
+          - heading "Learn on the canvas" [level=3] [ref=e75]
+          - paragraph [ref=e76]: Watch them draw, annotate and explain in real time. Rewatch the replay whenever you need it.
+      - paragraph [ref=e77]: No subscriptions — you pay per session, the service fee is shown upfront, and refunds are instant if you cancel before class.
+    - generic [ref=e79]:
+      - heading "The details we sweat" [level=2] [ref=e80]
+      - generic [ref=e81]:
+        - generic [ref=e82]:
+          - generic [ref=e83]:
+            - heading "Live canvas" [level=3] [ref=e88]
+            - paragraph [ref=e89]: Every stroke syncs in under a second, over slides, photos, even video.
+          - generic [ref=e90]:
+            - heading "Escrow wallet" [level=3] [ref=e97]
+            - paragraph [ref=e98]: Cancel before class and the refund is instant. No chasing anyone.
+          - generic [ref=e99]:
+            - heading "Replays" [level=3] [ref=e105]
+            - paragraph [ref=e106]: Completed sessions are yours to rewatch, chaptered by slide.
+          - generic [ref=e107]:
+            - heading "Cohorts" [level=3] [ref=e114]
+            - paragraph [ref=e115]: Seat-limited group sessions, with waitlists when they fill.
+          - generic [ref=e116]:
+            - heading "Learning Points" [level=3] [ref=e122]
+            - paragraph [ref=e123]: A track record you earn by showing up, session after session.
+          - generic [ref=e124]:
+            - heading "Real availability" [level=3] [ref=e130]
+            - paragraph [ref=e131]: Professionals set their own days, so you only see times that exist.
+        - generic [ref=e132]:
+          - img "The TeachCanvas learner home screen with live and upcoming sessions" [ref=e134]
+          - paragraph [ref=e135]: "The learner home: live now, upcoming, replays."
+      - paragraph [ref=e136]: Popular right now
+      - generic [ref=e138]:
+        - generic [ref=e139]:
+          - generic [ref=e140]: Coding
+          - generic [ref=e141]: Data
+          - generic [ref=e142]: Fintech
+          - generic [ref=e143]: Design
+          - generic [ref=e144]: Law
+          - generic [ref=e145]: Product
+          - generic [ref=e146]: Public speaking
+          - generic [ref=e147]: Exam prep
+          - generic [ref=e148]: Music theory
+          - generic [ref=e149]: Career coaching
+        - generic [ref=e150]:
+          - generic [ref=e151]: Coding
+          - generic [ref=e152]: Data
+          - generic [ref=e153]: Fintech
+          - generic [ref=e154]: Design
+          - generic [ref=e155]: Law
+          - generic [ref=e156]: Product
+          - generic [ref=e157]: Public speaking
+          - generic [ref=e158]: Exam prep
+          - generic [ref=e159]: Music theory
+          - generic [ref=e160]: Career coaching
+    - generic [ref=e163]:
+      - generic [ref=e164]:
+        - heading "Teach what you do all day." [level=2] [ref=e165]
+        - paragraph [ref=e166]: Set your rate and your days. Open a cohort or take 1:1 bookings. We hold the learner's payment in escrow and release it to your wallet when class ends.
+        - link "Start teaching" [ref=e167] [cursor=pointer]:
+          - /url: /signup?role=professional
+      - generic [ref=e170]:
+        - list [ref=e171]:
+          - listitem [ref=e172]: Your availability, your hourly rate
+          - listitem [ref=e175]: Cohort seats capped where you want them
+          - listitem [ref=e178]: A slide builder for preparing class
+          - listitem [ref=e181]: Withdraw to your bank when you like
+        - generic [ref=e184]:
+          - img "The TeachCanvas professional dashboard with the Go Live Now card" [ref=e185]
+          - generic [ref=e186]: Your dashboard — go live in one tap.
+    - blockquote [ref=e188]:
+      - paragraph [ref=e189]: I opened a 100-seat cohort on a Tuesday. It filled by Friday, and I never had to chase a single payment.
+      - generic [ref=e190]: Kwesi M., product designer — Accra
+    - generic [ref=e192]:
+      - heading "Ready when you are." [level=2] [ref=e193]
+      - generic [ref=e194]:
+        - link "Create a free account" [ref=e195] [cursor=pointer]:
+          - /url: /signup?role=learner
+        - link "or log in" [ref=e196] [cursor=pointer]:
+          - /url: /login
+    - generic [ref=e197]:
+      - generic [ref=e198]:
+        - link "TeachCanvas" [ref=e199] [cursor=pointer]:
+          - /url: /
+        - navigation [ref=e206]:
+          - link "Log in" [ref=e207] [cursor=pointer]:
+            - /url: /login
+          - link "Create account" [ref=e208] [cursor=pointer]:
+            - /url: /signup?role=learner
+          - link "Teach" [ref=e209] [cursor=pointer]:
+            - /url: /signup?role=professional
+      - paragraph [ref=e210]: Live sessions on a shared canvas — from Lagos to Nairobi. © 2026 TeachCanvas
+  - button "Open Next.js Dev Tools" [ref=e216] [cursor=pointer]
