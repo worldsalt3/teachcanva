@@ -493,14 +493,26 @@ export type BoardEvent =
  * Joins the realtime broadcast channel for a session's canvas. Own messages
  * are not echoed back (`self: false`). Returns a no-op pair when Supabase is
  * off so the board works standalone.
+ *
+ * Late-join catch-up: on subscribe the client broadcasts `hello`; any
+ * participant with ink on their board replies with a `state` snapshot (PNG
+ * data URL) which the joiner paints once, so mid-session joiners don't start
+ * from a blank canvas.
  */
 export function connectBoard(
   sessionId: string,
   onEvents: (events: BoardEvent[], sentAt?: number) => void,
+  catchUp?: {
+    /** Returns a PNG data URL of the current board, or null when it's blank. */
+    snapshot: () => string | null;
+    /** Receives the first snapshot sent by an existing participant. */
+    onSnapshot: (png: string) => void;
+  },
 ): { send: (events: BoardEvent[]) => void; disconnect: () => void } {
   const supabase = createClient();
   if (!supabase) return { send: () => {}, disconnect: () => {} };
 
+  let caughtUp = false;
   const channel = supabase.channel(`board:${sessionId}`, {
     config: { broadcast: { self: false } },
   });
@@ -513,7 +525,30 @@ export function connectBoard(
       if (Array.isArray(events) && events.length)
         onEvents(events, payload?.sentAt);
     })
-    .subscribe();
+    .on("broadcast", { event: "hello" }, () => {
+      const png = catchUp?.snapshot();
+      console.debug(
+        "[board] hello received, snapshot:",
+        png ? png.length : null,
+      );
+      if (png)
+        void channel.send({
+          type: "broadcast",
+          event: "state",
+          payload: { png },
+        });
+    })
+    .on("broadcast", { event: "state" }, (message: Record<string, unknown>) => {
+      const png = (message as { payload?: { png?: string } }).payload?.png;
+      if (!caughtUp && typeof png === "string" && catchUp) {
+        caughtUp = true;
+        catchUp.onSnapshot(png);
+      }
+    })
+    .subscribe((status: string) => {
+      if (status === "SUBSCRIBED" && catchUp)
+        void channel.send({ type: "broadcast", event: "hello", payload: {} });
+    });
 
   return {
     send: (events) => {

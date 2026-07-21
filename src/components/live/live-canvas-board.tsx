@@ -53,6 +53,10 @@ export function LiveCanvasBoard({
   const sync = useRef<ReturnType<typeof connectBoard> | null>(null);
   const outbox = useRef<BoardEvent[]>([]);
   const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** True once any ink (local or remote) is on the board. */
+  const boardInk = useRef(false);
+  /** True once this user has drawn locally; blocks catch-up overwrites. */
+  const localInk = useRef(false);
 
   const [mode, setMode] = useState<"slide" | "free">(
     slide ? defaultMode : "free",
@@ -186,12 +190,14 @@ export function LiveCanvasBoard({
             ctx.moveTo(ev.x0 * w, ev.y0 * h);
             ctx.lineTo(ev.x1 * w, ev.y1 * h);
             ctx.stroke();
+            boardInk.current = true;
             break;
           case "undo":
             popHistory();
             break;
           case "clear":
             paintBase(modeRef.current);
+            boardInk.current = false;
             break;
         }
       }
@@ -199,20 +205,57 @@ export function LiveCanvasBoard({
     [pushHistory, popHistory, paintBase],
   );
 
+  /**
+   * Downscaled PNG of the current board, sent to peers who join after
+   * drawing started. Null while the board is blank.
+   */
+  const snapshotBoard = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !boardInk.current) return null;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (!w || !h) return null;
+    const scale = Math.min(1, 640 / w);
+    const off = document.createElement("canvas");
+    off.width = Math.round(w * scale);
+    off.height = Math.round(h * scale);
+    off.getContext("2d")?.drawImage(canvas, 0, 0, off.width, off.height);
+    return off.toDataURL("image/png");
+  }, []);
+
+  const applySnapshot = useCallback((png: string) => {
+    // A snapshot is a superset of any live strokes painted meanwhile, so
+    // overwriting is safe — unless this user already drew their own ink.
+    if (localInk.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, canvas.clientWidth, canvas.clientHeight);
+      boardInk.current = true;
+    };
+    img.src = png;
+  }, []);
+
   useEffect(() => {
     if (!syncId || !isSupabaseEnabled) return;
-    const conn = connectBoard(syncId, (events, sentAt) => {
-      applyRemote(events);
-      // Clock skew across devices can only shrink this, so clamp at 0.
-      if (typeof sentAt === "number")
-        onSyncRef.current?.(Math.max(0, Date.now() - sentAt));
-    });
+    const conn = connectBoard(
+      syncId,
+      (events, sentAt) => {
+        applyRemote(events);
+        // Clock skew across devices can only shrink this, so clamp at 0.
+        if (typeof sentAt === "number")
+          onSyncRef.current?.(Math.max(0, Date.now() - sentAt));
+      },
+      { snapshot: snapshotBoard, onSnapshot: applySnapshot },
+    );
     sync.current = conn;
     return () => {
       conn.disconnect();
       sync.current = null;
     };
-  }, [syncId, applyRemote]);
+  }, [syncId, applyRemote, snapshotBoard, applySnapshot]);
 
   // Batches outgoing events (~8 sends/s) to stay under the realtime
   // client's default broadcast rate limit.
@@ -256,6 +299,8 @@ export function LiveCanvasBoard({
     ctx.moveTo(last.current.x, last.current.y);
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
+    boardInk.current = true;
+    localInk.current = true;
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     emit({
@@ -282,6 +327,7 @@ export function LiveCanvasBoard({
 
   const clear = () => {
     paintBase(mode);
+    boardInk.current = false;
     emit({ type: "clear" });
   };
 
