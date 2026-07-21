@@ -93,11 +93,11 @@ input[type="time"]::-webkit-date-and-time-value {
 }
 
 /* The marketing landing page renders full-bleed (desktop web view) instead
-   of inside the centered mobile frame, on a plain light canvas. */
+   of inside the centered mobile frame, on the brand's dark navy canvas. */
 .app-shell:has(> .landing) {
   max-width: none;
   box-shadow: none;
-  background: #f7f8fb;
+  background: #090d18;
 }
 
 @utility no-scrollbar {
