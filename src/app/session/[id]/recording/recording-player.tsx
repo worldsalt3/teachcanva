@@ -48,10 +48,12 @@ interface StageView {
  */
 function ZoomStage({
   playing,
+  voice,
   onTogglePlay,
   children,
 }: {
   playing: boolean;
+  voice?: boolean;
   onTogglePlay: () => void;
   children: React.ReactNode;
 }) {
@@ -245,7 +247,7 @@ function ZoomStage({
 
       <span className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
         <span className="size-1.5 rounded-full bg-danger" />
-        Rec
+        {voice ? "Rec · Voice" : "Rec"}
       </span>
 
       <div className="absolute right-3 top-3 flex items-center gap-1.5">
@@ -331,7 +333,28 @@ export function RecordingPlayer({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   const chapters = remoteSlides ?? slides[sessionId] ?? [];
-  const duration = (session?.durationMins ?? 10) * 60;
+
+  // Voice track recorded live in the session (professional's mic). When it
+  // exists the audio element drives the whole timeline — position, duration
+  // and speed — and the interval below stays off.
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [voiceUrl, setVoiceUrl] = useState<string | null>(null);
+  const [voiceDuration, setVoiceDuration] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isSupabaseEnabled) return;
+    let cancelled = false;
+    void fetch(`/api/sessions/recording?id=${encodeURIComponent(sessionId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { url?: string } | null) => {
+        if (!cancelled && data?.url) setVoiceUrl(data.url);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  const duration = voiceDuration ?? (session?.durationMins ?? 10) * 60;
 
   const [position, setPosition] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -339,12 +362,25 @@ export function RecordingPlayer({ sessionId }: { sessionId: string }) {
   const barRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || voiceUrl) return;
     const id = setInterval(() => {
       setPosition((p) => Math.min(duration, p + speed));
     }, 1000);
     return () => clearInterval(id);
-  }, [playing, speed, duration]);
+  }, [playing, speed, duration, voiceUrl]);
+
+  // Keep the audio element in lockstep with the play/pause + speed state.
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) void el.play().catch(() => {});
+    else el.pause();
+  }, [playing, voiceUrl]);
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (el) el.playbackRate = speed;
+  }, [speed, voiceUrl]);
 
   // Stop at the end of the recording (deferred so it stays out of the effect
   // body, satisfying the no-set-state-in-effect rule).
@@ -354,20 +390,28 @@ export function RecordingPlayer({ sessionId }: { sessionId: string }) {
     return () => clearTimeout(t);
   }, [playing, position, duration]);
 
+  const seekTo = (sec: number) => {
+    const next = Math.min(duration, Math.max(0, sec));
+    setPosition(next);
+    const el = audioRef.current;
+    if (el && Number.isFinite(el.duration)) {
+      el.currentTime = Math.min(next, el.duration);
+    }
+  };
+
   const togglePlay = () => {
-    if (!playing && position >= duration) setPosition(0);
+    if (!playing && position >= duration) seekTo(0);
     setPlaying((p) => !p);
   };
 
-  const skip = (delta: number) =>
-    setPosition((p) => Math.min(duration, Math.max(0, p + delta)));
+  const skip = (delta: number) => seekTo(position + delta);
 
   const seek = (clientX: number) => {
     const el = barRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-    setPosition(ratio * duration);
+    seekTo(ratio * duration);
   };
 
   const cycleSpeed = () =>
@@ -401,8 +445,45 @@ export function RecordingPlayer({ sessionId }: { sessionId: string }) {
       </AppHeader>
 
       <div className="space-y-5 px-5 py-4">
+        {voiceUrl && (
+          <audio
+            ref={audioRef}
+            src={voiceUrl}
+            preload="metadata"
+            className="hidden"
+            onLoadedMetadata={(e) => {
+              const el = e.currentTarget;
+              if (el.duration === Infinity) {
+                // Chrome quirk: streamed MediaRecorder tracks report Infinity
+                // until forced to scan — seek far ahead once to resolve it.
+                el.currentTime = 1e7;
+                el.ondurationchange = () => {
+                  if (Number.isFinite(el.duration) && el.duration > 0) {
+                    el.ondurationchange = null;
+                    el.currentTime = 0;
+                    setVoiceDuration(el.duration);
+                  }
+                };
+              } else if (el.duration > 0) {
+                setVoiceDuration(el.duration);
+              }
+            }}
+            onTimeUpdate={(e) => {
+              const el = e.currentTarget;
+              if (Number.isFinite(el.duration)) {
+                setPosition(el.currentTime);
+              }
+            }}
+            onEnded={() => setPlaying(false)}
+          />
+        )}
+
         {/* Video surface — pinch/double-tap to zoom, tap to play/pause */}
-        <ZoomStage playing={playing} onTogglePlay={togglePlay}>
+        <ZoomStage
+          playing={playing}
+          voice={Boolean(voiceUrl)}
+          onTogglePlay={togglePlay}
+        >
           <MediaThumb
             seed={sessionId}
             icon={false}

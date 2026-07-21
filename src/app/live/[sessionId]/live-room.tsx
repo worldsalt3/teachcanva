@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
@@ -30,6 +30,7 @@ import { useApp } from "@/lib/store/app-provider";
 import { useVideoRoom } from "@/lib/services/use-video-room";
 import { isSupabaseEnabled } from "@/lib/services/config";
 import { fetchChat, subscribeChat } from "@/lib/services/repository";
+import { uploadSessionVoice } from "@/lib/services/storage";
 import { cn } from "@/lib/utils";
 import { liveSession as previewSession } from "@/lib/mock";
 import type { LiveSessionInfo } from "@/lib/services/types";
@@ -202,6 +203,74 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
     toastTimer.current = setTimeout(() => setToast(null), 2200);
   };
 
+  // Voice capture: record the professional's mic for the session replay.
+  // Chunks accumulate locally; ending the session uploads the track to the
+  // private `recordings` bucket, which the replay player streams back via
+  // signed URL. Stub mode keeps the replay simulated, so nothing records.
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const voiceChunks = useRef<Blob[]>([]);
+  const [ending, setEnding] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (role !== "teacher" || !isSupabaseEnabled) return;
+    if (typeof MediaRecorder === "undefined") return;
+    let stream: MediaStream | null = null;
+    let cancelled = false;
+    void navigator.mediaDevices
+      ?.getUserMedia({ audio: true })
+      .then((s) => {
+        if (cancelled) {
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        stream = s;
+        const mimeType = ["audio/webm", "audio/mp4"].find((t) =>
+          MediaRecorder.isTypeSupported(t),
+        );
+        const recorder = new MediaRecorder(s, {
+          ...(mimeType ? { mimeType } : {}),
+          audioBitsPerSecond: 32_000,
+        });
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) voiceChunks.current.push(e.data);
+        };
+        recorder.start(5000);
+        recorderRef.current = recorder;
+      })
+      .catch(() => {
+        // Mic denied — the session still runs, just without a voice replay.
+      });
+    return () => {
+      cancelled = true;
+      const recorder = recorderRef.current;
+      if (recorder && recorder.state !== "inactive") recorder.stop();
+      recorderRef.current = null;
+      stream?.getTracks().forEach((t) => t.stop());
+      voiceChunks.current = [];
+    };
+  }, [role, session.id]);
+
+  const endSession = async () => {
+    if (ending) return;
+    setEnding(true);
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      // Flush the final chunk before assembling the blob.
+      await new Promise<void>((resolve) => {
+        recorder.onstop = () => resolve();
+        recorder.stop();
+      });
+    }
+    const type = recorder?.mimeType || "audio/webm";
+    const blob = new Blob(voiceChunks.current, { type });
+    if (blob.size > 0) {
+      fireToast("Saving voice recording…");
+      await uploadSessionVoice(blob, session.id);
+    }
+    router.push(endHref);
+  };
+
   useEffect(() => {
     if (role !== "student") return;
     const show = setTimeout(() => setTpEarned(true), 1200);
@@ -256,27 +325,25 @@ export function LiveRoom({ sessionId }: { sessionId: string }) {
   return (
     <div className="relative flex h-dvh flex-col bg-canvas">
       <header className="flex items-center justify-between gap-2 px-4 pb-2.5 pt-[max(0.6rem,env(safe-area-inset-top))]">
-        <Link
-          href={endHref}
-          className={cn(
-            "tap inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition-transform active:scale-95",
-            role === "teacher"
-              ? "bg-danger text-white"
-              : "bg-surface-2 text-fg",
-          )}
-        >
-          {role === "teacher" ? (
-            <>
-              <X className="size-4" />
-              End
-            </>
-          ) : (
-            <>
-              <ChevronLeft className="size-4" />
-              Leave
-            </>
-          )}
-        </Link>
+        {role === "teacher" ? (
+          <button
+            type="button"
+            onClick={() => void endSession()}
+            disabled={ending}
+            className="tap inline-flex h-9 items-center gap-1.5 rounded-full bg-danger px-3 text-[13px] font-semibold text-white transition-transform active:scale-95 disabled:opacity-70"
+          >
+            <X className="size-4" />
+            {ending ? "Saving…" : "End"}
+          </button>
+        ) : (
+          <Link
+            href={endHref}
+            className="tap inline-flex h-9 items-center gap-1.5 rounded-full bg-surface-2 px-3 text-[13px] font-semibold text-fg transition-transform active:scale-95"
+          >
+            <ChevronLeft className="size-4" />
+            Leave
+          </Link>
+        )}
 
         <div className="min-w-0 text-center">
           <p className="truncate text-sm font-semibold text-fg">
