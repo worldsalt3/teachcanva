@@ -274,8 +274,8 @@ export default function LandingPage() {
         </div>
         <p className="mt-8 text-[13px] leading-relaxed text-ink-soft/70">
           No subscriptions — you pay per session through Monnify&apos;s secure
-          checkout, the service fee is shown upfront, and refunds are instant
-          if you cancel before class.
+          checkout, the service fee is shown upfront, and refunds are instant if
+          you cancel before class.
         </p>
       </section>
 
