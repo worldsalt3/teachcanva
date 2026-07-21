@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Check, Sparkles, Wallet } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,15 @@ const CONFETTI_COLORS = [
 
 export default function SessionCompletePage() {
   const { id } = useParams<{ id: string }>();
-  const { cohorts, studentBookings, endCohort, role } = useApp();
+  const router = useRouter();
+  const {
+    cohorts,
+    studentBookings,
+    teacherBookings,
+    endCohort,
+    role,
+    hydrated,
+  } = useApp();
 
   // Settle the session server-side: 1:1 bookings are marked completed and
   // cohorts ended (owner only), releasing escrow to the professional either
@@ -63,7 +71,9 @@ export default function SessionCompletePage() {
         totalTp: sessionRewards.reduce((sum, r) => sum + r.tp, 0),
       };
     }
-    const booking = studentBookings.find((b) => b.id === id);
+    const booking =
+      studentBookings.find((b) => b.id === id) ??
+      teacherBookings.find((b) => b.id === id);
     if (booking) {
       return {
         subject: booking.subject,
@@ -87,7 +97,7 @@ export default function SessionCompletePage() {
       payout: 0,
       totalTp: sessionRewards.reduce((sum, r) => sum + r.tp, 0),
     };
-  }, [cohorts, studentBookings, id]);
+  }, [cohorts, studentBookings, teacherBookings, id]);
 
   const [rating, setRating] = useState(5);
   const [feedback, setFeedback] = useState("");
@@ -186,11 +196,20 @@ export default function SessionCompletePage() {
               </Button>
             </Link>
           ) : null}
-          <Link href={role === "teacher" ? "/teach/dashboard" : "/home"}>
-            <Button fullWidth size="lg" variant="neutral">
-              Back to Home
-            </Button>
-          </Link>
+          {/* Navigate imperatively so the destination is decided by the
+              hydrated role — a pre-hydration tap would otherwise send
+              professionals to the learner home. */}
+          <Button
+            fullWidth
+            size="lg"
+            variant="neutral"
+            disabled={!hydrated}
+            onClick={() =>
+              router.push(role === "teacher" ? "/teach/dashboard" : "/home")
+            }
+          >
+            Back to Home
+          </Button>
         </div>
       </div>
     </div>
