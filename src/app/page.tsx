@@ -7,7 +7,6 @@ import {
   PenLine,
   PlayCircle,
   Sparkles,
-  Star,
   UsersRound,
   Wallet,
 } from "lucide-react";
@@ -38,9 +37,76 @@ function Brand({ small }: { small?: boolean }) {
   );
 }
 
+/* ── Hand-drawn SVG accents ── */
+
+function Scribble({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 120 12"
+      fill="none"
+      preserveAspectRatio="none"
+      className={className}
+      aria-hidden
+    >
+      <path
+        d="M3 9 C 28 3.5, 64 2.5, 117 5.5"
+        stroke="currentColor"
+        strokeWidth="4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M9 10.5 C 40 6.5, 74 5, 111 8"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        opacity="0.5"
+      />
+    </svg>
+  );
+}
+
+function ArrowDoodle({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 48 48" fill="none" className={className} aria-hidden>
+      <path
+        d="M10 44 C 14 28, 20 16, 34 7"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M24 8 L 34 7 L 33 17"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function Lasso({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 240 72"
+      fill="none"
+      preserveAspectRatio="none"
+      className={className}
+      aria-hidden
+    >
+      <path
+        d="M122 6 C 46 4, 8 16, 8 36 C 8 58, 64 70, 124 68 C 190 66, 234 54, 232 34 C 230 14, 182 4, 104 7"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export default function LandingPage() {
   return (
-    <main className="landing relative flex min-h-dvh flex-col text-ink">
+    <main className="landing relative flex min-h-dvh flex-col bg-noise text-ink">
       {/* ── Top bar ── */}
       <header className="sticky top-0 z-40 border-b border-ink/8 bg-[#f7f8fb]/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
@@ -50,16 +116,19 @@ export default function LandingPage() {
           <nav className="hidden items-center gap-6 text-[14px] font-medium text-ink-soft md:flex">
             <a
               href="#how-it-works"
-              className="transition-colors hover:text-ink"
+              className="link-draw transition-colors hover:text-ink"
             >
               How it works
             </a>
-            <a href="#details" className="transition-colors hover:text-ink">
+            <a
+              href="#details"
+              className="link-draw transition-colors hover:text-ink"
+            >
               What you get
             </a>
             <a
               href="#for-professionals"
-              className="transition-colors hover:text-ink"
+              className="link-draw transition-colors hover:text-ink"
             >
               For professionals
             </a>
@@ -96,34 +165,17 @@ export default function LandingPage() {
           aria-hidden
         />
         <section className="fade-up">
-          <span className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-soft shadow-sm">
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-bright opacity-60" />
-              <span className="relative inline-flex size-2 rounded-full bg-success-bright" />
-            </span>
-            Live 1:1s &amp; cohorts · escrow via Monnify
+          <span className="inline-block -rotate-2 rounded-md border border-ink/10 bg-white px-3 py-1.5 font-serif text-[14px] italic tracking-tight text-ink-soft shadow-sm">
+            live 1:1s &amp; cohorts — money held in escrow
           </span>
-          <h1 className="mt-5 font-display text-[2.1rem] font-bold leading-[1.15] tracking-tight text-ink md:text-4xl lg:text-[3.2rem] lg:leading-[1.08]">
+          <h1 className="mt-6 font-display text-[2.5rem] font-bold leading-[1.08] tracking-tight text-ink md:text-5xl lg:text-6xl lg:leading-[1.04]">
             Learn{" "}
-            <span className="relative inline-block">
+            <span className="relative inline-block font-serif font-medium italic text-primary">
               live
-              <svg
-                className="absolute -bottom-1.5 left-0 w-full lg:-bottom-2"
-                viewBox="0 0 120 12"
-                fill="none"
-                preserveAspectRatio="none"
-                aria-hidden
-              >
-                <path
-                  d="M3 9 C 30 3, 62 2, 117 6"
-                  stroke="#2563eb"
-                  strokeWidth="5"
-                  strokeLinecap="round"
-                  opacity="0.9"
-                />
-              </svg>
+              <Scribble className="absolute -bottom-1.5 left-0 h-2.5 w-full text-primary lg:-bottom-2.5 lg:h-3" />
             </span>{" "}
-            from people who do the work.
+            from people who{" "}
+            <span className="font-serif font-medium italic">do the work.</span>
           </h1>
           <p className="mt-6 max-w-md text-[16px] leading-relaxed text-ink-soft">
             Book a 1:1 or take a seat in a cohort. Your professional teaches on
@@ -143,38 +195,19 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          <div className="mt-9 flex flex-wrap items-center gap-x-4 gap-y-3">
-            <div className="flex -space-x-2.5">
-              {[
-                ["AO", "from-[#2563eb] to-[#7da2ff]"],
-                ["KM", "from-[#14b8a6] to-[#5eead4]"],
-                ["ZE", "from-[#f5b417] to-[#fcd34d]"],
-                ["TA", "from-[#7c3aed] to-[#c4b5fd]"],
-              ].map(([initials, grad]) => (
-                <span
-                  key={initials}
-                  className={`grid size-8 place-items-center rounded-full bg-linear-to-br ${grad} text-[10px] font-bold text-white ring-2 ring-[#f7f8fb]`}
-                >
-                  {initials}
-                </span>
-              ))}
-            </div>
-            <div>
-              <span className="flex items-center gap-0.5" aria-hidden>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="size-3.5 fill-gold text-gold" />
-                ))}
-              </span>
-              <p className="mt-0.5 text-[12px] font-medium text-ink-soft">
-                4.9 across 2,400+ rated sessions
-              </p>
-            </div>
-          </div>
+          <p className="mt-9 max-w-sm border-l-2 border-gold pl-4 text-[14px] leading-relaxed text-ink-soft">
+            <span className="font-serif text-lg font-semibold text-ink">
+              4.9&nbsp;★
+            </span>{" "}
+            average across{" "}
+            <span className="font-semibold text-ink">2,400+</span> rated
+            sessions — from Lagos to Nairobi.
+          </p>
         </section>
 
         {/* ── Hero visual: the real app ── */}
         <section className="fade-up [animation-delay:0.15s]">
-          <div className="relative isolate mx-auto w-fit">
+          <div className="relative isolate mx-auto w-fit -rotate-2">
             <div
               className="pointer-events-none absolute -inset-12 -z-10 rounded-full bg-primary/10 blur-3xl"
               aria-hidden
@@ -200,26 +233,33 @@ export default function LandingPage() {
               escrow
             </span>
           </div>
-          <p className="mt-5 text-center text-[12px] text-ink-soft/70">
-            The actual app — annotate, chat, replay.
-          </p>
+          <div className="mx-auto mt-6 flex w-fit items-center gap-2.5">
+            <ArrowDoodle className="size-8 shrink-0 text-ink-soft/50" />
+            <p className="max-w-48 font-serif text-[15px] italic leading-snug text-ink-soft">
+              the actual app — live ink, not a mockup
+            </p>
+          </div>
         </section>
       </div>
 
       {/* ── Stats band ── */}
       <section className="mt-16 w-full border-y border-ink/8 bg-white lg:mt-24">
-        <div className="mx-auto grid w-full max-w-5xl grid-cols-2 gap-x-6 gap-y-8 px-6 py-9 md:grid-cols-4 lg:px-8">
+        <div className="mx-auto grid w-full max-w-5xl grid-cols-2 gap-x-8 gap-y-8 px-6 py-10 md:flex md:items-end lg:px-8">
           {[
             ["<1s", "canvas sync latency"],
             ["100%", "of payments in escrow"],
             ["4.9★", "average session rating"],
             ["100", "seats in the biggest cohorts"],
-          ].map(([stat, label]) => (
-            <div key={label} className="text-center md:text-left">
-              <p className="font-display text-2xl font-bold tracking-tight text-ink lg:text-3xl">
+          ].map(([stat, label], i) => (
+            <div
+              key={label}
+              className={`md:flex-1 ${i > 0 ? "md:border-l md:border-ink/8 md:pl-8 lg:pl-10" : ""}`}
+            >
+              <p className="font-serif text-3xl font-semibold tracking-tight text-ink lg:text-4xl">
                 {stat}
               </p>
-              <p className="mt-1 text-[12px] font-medium text-ink-soft">
+              <Scribble className="mt-1.5 h-1.5 w-10 text-primary/50" />
+              <p className="mt-1.5 text-[12px] font-medium text-ink-soft">
                 {label}
               </p>
             </div>
@@ -232,13 +272,16 @@ export default function LandingPage() {
         id="how-it-works"
         className="mx-auto mt-20 w-full max-w-5xl scroll-mt-24 px-6 lg:mt-28 lg:px-8"
       >
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
-          How it works
-        </p>
-        <h2 className="mt-2 font-display text-2xl font-bold tracking-tight text-ink lg:text-3xl">
-          Booked to learning in three steps
-        </h2>
-        <div className="mt-8 grid gap-4 md:grid-cols-3 md:gap-5">
+        <div className="reveal">
+          <p className="font-serif text-[15px] italic text-primary">
+            how it works
+          </p>
+          <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink lg:text-4xl">
+            Booked to learning in{" "}
+            <span className="font-serif font-medium italic">three steps.</span>
+          </h2>
+        </div>
+        <div className="mt-6">
           {[
             [
               "01",
@@ -255,24 +298,28 @@ export default function LandingPage() {
               "Learn on the canvas",
               "Watch them draw, annotate and explain in real time. Rewatch the replay whenever you need it.",
             ],
-          ].map(([step, title, desc]) => (
+          ].map(([step, title, desc], i) => (
             <div
               key={step}
-              className="rounded-2xl border border-ink/8 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-ink/12 hover:shadow-lg"
+              className={`reveal grid grid-cols-[4.5rem_1fr] items-start gap-5 border-t border-ink/8 py-8 first:border-t-0 sm:grid-cols-[6rem_1fr] sm:gap-8 ${
+                i === 1 ? "md:ml-16" : i === 2 ? "md:ml-32" : ""
+              }`}
             >
-              <span className="grid size-9 place-items-center rounded-xl bg-primary/10 font-display text-[13px] font-bold text-primary">
+              <span className="font-serif text-5xl font-medium italic leading-none text-primary/40 sm:text-6xl">
                 {step}
               </span>
-              <h3 className="mt-4 font-display text-lg font-bold text-ink">
-                {title}
-              </h3>
-              <p className="mt-2 text-[14px] leading-relaxed text-ink-soft">
-                {desc}
-              </p>
+              <div>
+                <h3 className="font-display text-xl font-bold text-ink">
+                  {title}
+                </h3>
+                <p className="mt-2 max-w-lg text-[15px] leading-relaxed text-ink-soft">
+                  {desc}
+                </p>
+              </div>
             </div>
           ))}
         </div>
-        <p className="mt-8 text-[13px] leading-relaxed text-ink-soft/70">
+        <p className="reveal max-w-2xl border-t border-ink/8 pt-6 text-[13px] leading-relaxed text-ink-soft/70">
           No subscriptions — you pay per session through Monnify&apos;s secure
           checkout, the service fee is shown upfront, and refunds are instant if
           you cancel before class.
@@ -285,13 +332,14 @@ export default function LandingPage() {
         className="mt-20 w-full scroll-mt-24 border-y border-ink/8 bg-white py-14 lg:mt-28 lg:py-20"
       >
         <div className="mx-auto w-full max-w-5xl px-6 lg:px-8">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
-            What you get
+          <p className="font-serif text-[15px] italic text-primary">
+            what you get
           </p>
-          <h2 className="mt-2 font-display text-2xl font-bold tracking-tight text-ink lg:text-3xl">
-            The details we sweat
+          <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink lg:text-4xl">
+            The details{" "}
+            <span className="font-serif font-medium italic">we sweat.</span>
           </h2>
-          <div className="mt-8 grid items-start gap-10 md:grid-cols-[1fr_250px] md:gap-12 lg:grid-cols-[1fr_290px]">
+          <div className="reveal mt-8 grid items-start gap-10 md:grid-cols-[1fr_250px] md:gap-12 lg:grid-cols-[1fr_290px]">
             <div className="grid gap-x-12 lg:grid-cols-2">
               <Detail
                 icon={<PenLine className="size-4.5" />}
@@ -334,13 +382,13 @@ export default function LandingPage() {
                   loading="lazy"
                 />
               </div>
-              <p className="mt-3 text-center text-[12px] text-ink-soft/70">
-                The learner home: live now, upcoming, replays.
+              <p className="mt-3 text-center font-serif text-[14px] italic text-ink-soft">
+                the learner home — live now, upcoming, replays
               </p>
             </div>
           </div>
-          <p className="mt-10 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-soft/70">
-            Popular right now
+          <p className="mt-10 font-serif text-[15px] italic text-ink-soft">
+            popular right now
           </p>
           <div className="group relative mt-3 -mx-6 overflow-x-hidden lg:-mx-8">
             <div className="marquee flex w-max group-hover:[animation-play-state:paused] group-active:[animation-play-state:paused]">
@@ -364,7 +412,7 @@ export default function LandingPage() {
                   ].map((topic) => (
                     <span
                       key={topic}
-                      className="whitespace-nowrap rounded-full border border-ink/10 bg-[#f7f8fb] px-3.5 py-1.5 text-[13px] font-medium text-ink-soft"
+                      className="whitespace-nowrap rounded-full bg-ink/4 px-4 py-1.5 text-[13px] font-medium text-ink-soft"
                     >
                       {topic}
                     </span>
@@ -389,19 +437,23 @@ export default function LandingPage() {
         id="for-professionals"
         className="mx-auto mt-20 w-full max-w-5xl scroll-mt-24 px-6 lg:mt-28 lg:px-8"
       >
-        <div className="relative overflow-hidden rounded-3xl bg-ink p-8 shadow-2xl shadow-ink/20 lg:p-12">
+        <div className="reveal relative overflow-hidden rounded-3xl bg-ink p-8 shadow-2xl shadow-ink/20 lg:p-12">
           <div className="absolute inset-0 bg-grid" aria-hidden />
           <div
             className="absolute -right-24 -top-24 size-96 rounded-full bg-primary/20 blur-3xl"
             aria-hidden
           />
-          <div className="relative lg:flex lg:items-start lg:justify-between lg:gap-12">
+          <div className="relative lg:flex lg:items-center lg:justify-between lg:gap-12">
             <div className="max-w-md">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary-soft">
-                For professionals
+              <p className="font-serif text-[15px] italic text-primary-soft">
+                for professionals
               </p>
-              <h2 className="mt-2 font-display text-2xl font-bold tracking-tight text-white lg:text-3xl">
-                Teach what you do all day.
+              <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-white lg:text-4xl">
+                Teach what you{" "}
+                <span className="relative inline-block font-serif font-medium italic">
+                  do all day.
+                  <Scribble className="absolute -bottom-1 left-0 h-2 w-full text-primary-soft/70" />
+                </span>
               </h2>
               <p className="mt-3 text-[15px] leading-relaxed text-white/60">
                 Set your rate and your days. Open a cohort or take 1:1 bookings.
@@ -441,8 +493,8 @@ export default function LandingPage() {
                   className="w-full mask-[radial-gradient(90%_85%_at_50%_45%,black_55%,transparent_100%)]"
                   loading="lazy"
                 />
-                <p className="text-center text-[12px] font-semibold text-white/60">
-                  Your dashboard — go live in one tap.
+                <p className="text-center font-serif text-[14px] italic text-white/60">
+                  your dashboard — go live in one tap
                 </p>
               </div>
             </div>
@@ -451,45 +503,48 @@ export default function LandingPage() {
       </section>
 
       {/* ── Quote ── */}
-      <section className="mx-auto mt-20 w-full max-w-3xl px-6 text-center lg:mt-28 lg:px-8">
-        <span
-          className="inline-flex items-center justify-center gap-0.5"
-          aria-hidden
-        >
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Star key={i} className="size-4 fill-gold text-gold" />
-          ))}
-        </span>
-        <blockquote className="mt-5">
-          <p className="font-display text-xl font-medium leading-relaxed text-ink lg:text-[1.65rem] lg:leading-snug">
-            “I opened a 100-seat cohort on a Tuesday. It filled by Friday, and I
-            never had to chase a single payment.”
-          </p>
-          <footer className="mt-6 flex items-center justify-center gap-3">
-            <span className="grid size-10 place-items-center rounded-full bg-linear-to-br from-teal to-[#5eead4] font-display text-[13px] font-bold text-white">
-              KM
-            </span>
-            <span className="text-left text-[14px]">
-              <span className="block font-semibold text-ink">Kwesi M.</span>
-              <span className="block text-[12px] text-ink-soft">
-                Product designer — Accra
+      <section className="reveal mx-auto mt-20 w-full max-w-4xl px-6 lg:mt-28 lg:px-8">
+        <div className="bg-ruled pb-4">
+          <span
+            className="block font-serif text-7xl leading-none text-primary/25"
+            aria-hidden
+          >
+            “
+          </span>
+          <blockquote className="-mt-7">
+            <p className="max-w-3xl font-serif text-2xl font-medium italic leading-snug text-ink lg:text-[2.4rem] lg:leading-[1.3]">
+              I opened a 100-seat cohort on a Tuesday. It filled by Friday, and
+              I never had to chase a single payment.
+            </p>
+            <footer className="mt-8 flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-full bg-linear-to-br from-teal to-[#5eead4] font-display text-[13px] font-bold text-white">
+                KM
               </span>
-            </span>
-          </footer>
-        </blockquote>
+              <span className="text-[14px]">
+                <span className="block font-semibold text-ink">Kwesi M.</span>
+                <span className="block text-[12px] text-ink-soft">
+                  Product designer — Accra · ★★★★★
+                </span>
+              </span>
+            </footer>
+          </blockquote>
+        </div>
       </section>
 
       {/* ── Final CTA ── */}
       <section className="mx-auto mt-20 w-full max-w-5xl px-6 lg:mt-28 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl bg-ink px-8 py-14 text-center shadow-2xl shadow-ink/20 lg:py-20">
+        <div className="reveal relative overflow-hidden rounded-3xl bg-ink px-8 py-14 text-center shadow-2xl shadow-ink/20 lg:py-20">
           <div className="absolute inset-0 bg-grid" aria-hidden />
           <div
             className="absolute -bottom-36 left-1/2 size-96 -translate-x-1/2 rounded-full bg-primary/30 blur-3xl"
             aria-hidden
           />
           <div className="relative">
-            <h2 className="font-display text-3xl font-bold tracking-tight text-white lg:text-4xl">
-              Ready when you are.
+            <h2 className="font-display text-3xl font-bold tracking-tight text-white lg:text-5xl">
+              Ready{" "}
+              <span className="font-serif font-medium italic text-primary-soft">
+                when you are.
+              </span>
             </h2>
             <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-white/60">
               Create a free account in under a minute. No subscription — you pay
@@ -497,12 +552,15 @@ export default function LandingPage() {
               class ends.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <Link
-                href="/signup?role=learner"
-                className="tap inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-white px-7 text-[15px] font-semibold text-ink shadow-lg shadow-black/40 transition-all hover:-translate-y-0.5 hover:bg-white/90 active:translate-y-0"
-              >
-                Create a free account <ArrowRight className="size-4" />
-              </Link>
+              <span className="relative inline-flex">
+                <Link
+                  href="/signup?role=learner"
+                  className="tap inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-white px-7 text-[15px] font-semibold text-ink shadow-lg shadow-black/40 transition-all hover:-translate-y-0.5 hover:bg-white/90 active:translate-y-0"
+                >
+                  Create a free account <ArrowRight className="size-4" />
+                </Link>
+                <Lasso className="pointer-events-none absolute inset-0 size-full scale-x-110 scale-y-150 text-primary-soft/60" />
+              </span>
               <Link
                 href="/login"
                 className="tap text-[15px] font-semibold text-white/70 transition-colors hover:text-white"
@@ -538,8 +596,8 @@ export default function LandingPage() {
             </Link>
           </nav>
         </div>
-        <p className="mt-5 text-[12px] text-ink-soft/70">
-          Live sessions on a shared canvas — from Lagos to Nairobi. © 2026
+        <p className="mt-5 font-serif text-[13px] italic text-ink-soft/80">
+          live sessions on a shared canvas — from Lagos to Nairobi · © 2026
           TeachCanvas
         </p>
       </footer>
@@ -558,9 +616,7 @@ function Detail({
 }) {
   return (
     <div className="flex items-start gap-3.5 border-t border-ink/8 py-6">
-      <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-        {icon}
-      </span>
+      <span className="mt-1 shrink-0 text-primary">{icon}</span>
       <div>
         <h3 className="font-display text-[16px] font-bold text-ink">{title}</h3>
         <p className="mt-1.5 text-[14px] leading-relaxed text-ink-soft">

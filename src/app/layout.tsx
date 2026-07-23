@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Sora, Inter } from "next/font/google";
+import { Sora, Inter, Fraunces } from "next/font/google";
 import "./globals.css";
 import { PwaRegister } from "@/components/pwa-register";
 import { AppProvider } from "@/lib/store/app-provider";
@@ -13,6 +13,14 @@ const sora = Sora({
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+});
+
+/* Editorial serif accent — landing page only */
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  axes: ["opsz"],
 });
 
 export const metadata: Metadata = {
@@ -49,7 +57,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${sora.variable} ${inter.variable} antialiased`}
+      className={`${sora.variable} ${inter.variable} ${fraunces.variable} antialiased`}
     >
       <body>
         <AppProvider>
