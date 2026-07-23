@@ -4,6 +4,7 @@
   /* Fonts */
   --font-display: var(--font-sora);
   --font-sans: var(--font-inter);
+  --font-serif: var(--font-fraunces);
 
   /* Surfaces (dark navy) */
   --color-canvas: #090d18;
@@ -141,8 +142,65 @@ input[type="time"]::-webkit-date-and-time-value {
   }
 }
 
+@keyframes landing-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @utility fade-up {
   animation: landing-fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Scroll-driven reveal — progressive enhancement, no JS. Browsers without
+   view() timelines simply show the content. */
+@utility reveal {
+  @supports (animation-timeline: view()) {
+    animation: landing-reveal 1ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-timeline: view();
+    animation-range: entry 5% entry 40%;
+  }
+}
+
+/* Notebook ruled-line texture */
+@utility bg-ruled {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 35px,
+    rgba(11, 18, 32, 0.045) 35px,
+    rgba(11, 18, 32, 0.045) 36px
+  );
+}
+
+/* Faint paper grain */
+@utility bg-noise {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+}
+
+/* Nav link underline that draws in from the left */
+@utility link-draw {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: -4px;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  &:hover::after {
+    transform: scaleX(1);
+  }
 }
 
 @utility float-slow {
@@ -170,7 +228,8 @@ input[type="time"]::-webkit-date-and-time-value {
 @media (prefers-reduced-motion: reduce) {
   .fade-up,
   .float-slow,
-  .marquee {
+  .marquee,
+  .reveal {
     animation: none;
   }
 }
